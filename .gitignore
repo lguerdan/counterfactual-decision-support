@@ -1,2 +1,4 @@
 .ipynb_checkpoints/
 fig/*
+runs/*
+.DS_Store
