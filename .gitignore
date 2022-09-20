@@ -2,3 +2,4 @@
 fig/*
 runs/*
 .DS_Store
+*.pyc
