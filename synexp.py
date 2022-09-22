@@ -1,10 +1,10 @@
-import random
-
+import random, torch
 import numpy as np
 import pandas as pd
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import roc_auc_score
 
+from model import *
 
 def ccn_model(eta_star, alpha, beta):
     return (1 - beta - alpha)*eta_star + alpha
@@ -13,13 +13,15 @@ def eta(x, environment):
     if environment=='sinusoid':
         return .5 + .5 * np.sin(2.9*x + .1)
     elif environment=='low_base_rate_sinusoid':
-        return np.piecewise(x,[
-            ((-1 <= x) & (x <= .28)),
-            ((.28< x) & (x <= .71)),
-            ((0.71 < x) & (x <= 1))],  
-            [lambda v: .5+.5 *np.sin(.4*v -1.28), 
-             lambda v: .5 + .5*np.sin(12*v-4.5),
-             lambda v: .081+1.9*np.power((v-.7), 2) ])
+        return .5-.5 * np.sin(2.9*x+.1)
+
+        # return np.piecewise(x,[
+        #     ((-1 <= x) & (x <= .28)),
+        #     ((.28< x) & (x <= .71)),
+        #     ((0.71 < x) & (x <= 1))],  
+        #     [lambda v: .5+.5 *np.sin(.4*v -1.28), 
+        #      lambda v: .5 + .5*np.sin(12*v-4.5),
+        #      lambda v: .081+1.9*np.power((v-.7), 2) ])
     else: 
         return np.piecewise(x,[
             ((-1 <= x) & (x <= -.5)),
@@ -126,39 +128,45 @@ def run_experiment(expdf, do, train_ratio=.7):
 
         clf.fit(train['X'].to_numpy().reshape(-1, 1), train[target])
         pyhat = clf.predict_proba(val_df['X'].to_numpy().reshape(-1, 1))
-        auroc = roc_auc_score(val_df[target], pyhat[:, 1])
+        auroc = roc_auc_score(val_df[f'YS_{do}'], pyhat[:, 1])
 
         exp_results['model'].append(model)
         exp_results['AU-ROC'].append(auroc)
     
     return exp_results
 
-def ccpe(expdf, do):
+def ccpe(expdf, do, n_epochs):
+
+    # Don't need error params for surrogate at this stage
+    error_params = {
+        'alpha': None,
+        'beta': None
+    }
     
     expdf = expdf.sample(frac=1).reset_index(drop=True)
     expdf = expdf[expdf['D'] == do]
     split_ix = int(expdf.shape[0]*.7)
     train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
-    
-    # Fit class probability function (TODO: check on loss)
-    clf = MLPClassifier(alpha=0, hidden_layer_sizes=(40, 4))
-    clf.fit(train_df['X'].to_numpy().reshape(-1, 1), train_df['Y'])
-    pyhat = clf.predict_proba(val_df['X'].to_numpy().reshape(-1, 1))[:,1]
+
+    train_loader, val_loader = get_loaders(train_df, val_df, do, target='Y')
+    model = MLP()
+    losses = train(model, train_loader, error_params=error_params, n_epochs=n_epochs)
+    x, y, py_hat = evaluate(model, val_loader)
     
     # Compute error parameters from predicted probabilities
-    alpha_hat = pyhat.min()
-    beta_hat = 1 - pyhat.max()
+    alpha_hat = py_hat.min()
+    beta_hat = 1 - py_hat.max()
 
     debug_info = {
         'val_x': val_df['X'].to_numpy(),
-        'val_py': pyhat
+        'val_py': py_hat
     }
     
     return alpha_hat, beta_hat, debug_info
 
-def run_param_estimation_exp(expdf, error_params):
-    alpha_0_hat, beta_0_hat, _ = ccpe(expdf, do=0)
-    alpha_1_hat, beta_1_hat, _ = ccpe(expdf, do=1)
+def run_param_estimation_exp(expdf, error_params, n_epochs=20):
+    alpha_0_hat, beta_0_hat, _ = ccpe(expdf, do=0, n_epochs=20)
+    alpha_1_hat, beta_1_hat, _ = ccpe(expdf, do=1, n_epochs=20)
     
     exp_results = error_params.copy()
     exp_results['NS'] = expdf.shape[0]
@@ -174,3 +182,60 @@ def run_param_estimation_exp(expdf, error_params):
     exp_results['beta_1_error'] = np.abs(beta_1_hat-error_params['beta_1'])
     
     return exp_results
+
+def run_torch_experiment(expdf, do, error_params, n_epochs=5, train_ratio=.7):
+
+    expdf = expdf.sample(frac=1).reset_index(drop=True)
+    split_ix = int(expdf.shape[0]*train_ratio)
+    train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
+    
+    exp_results = {
+        'model': [],
+        'AU-ROC': []
+    }
+
+    surrogate_params = {
+        'alpha': error_params[f'alpha_{do}'],
+        'beta': error_params[f'beta_{do}']
+    }
+    
+    targets = ['Y', 'YD', f'Y_{do}', f'YS_{do}']
+    val_scores = {}
+    
+    for target in targets:
+        
+        train_loader, val_loader = get_loaders(train_df, val_df, do, target)
+        model = MLP()
+        losses = train(model, train_loader, error_params=surrogate_params, n_epochs=n_epochs)
+        x, y, py_hat = evaluate(model, val_loader)
+        auroc = roc_auc_score(y, py_hat)
+
+        exp_results['model'].append(target)
+        exp_results['AU-ROC'].append(auroc)
+        
+        val_scores[target] = {}
+        val_scores[target]['x'] = x
+        val_scores[target]['y'] = y
+        val_scores[target]['py_hat'] = py_hat
+
+    
+    return exp_results, val_scores
+
+
+def get_loaders(train_df, val_df, do, target):
+    
+    if target == 'YD':
+        train_df = train_df[train_df['D'] == do]
+        target = 'Y'
+    
+    X_train = torch.Tensor(train_df['X'].to_numpy())[:, None]
+    Y_train = torch.Tensor(train_df[target].to_numpy())[:, None]
+    train_data = torch.utils.data.TensorDataset(X_train, Y_train)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)
+
+    X_val = torch.Tensor(val_df['X'].to_numpy())[:, None]
+    Y_val = torch.Tensor(val_df[f'YS_{do}'].to_numpy())[:, None]
+    val_data = torch.utils.data.TensorDataset(X_val, Y_val)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=32, shuffle=False, num_workers=1)
+    
+    return train_loader, val_loader
