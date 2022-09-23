@@ -45,14 +45,16 @@ def pi(x, func):
     elif func=='linear': 
         return .2 * x + .4
 
-def generate_syn_data(
+def generate_syn_data_multioutcome(
     NS,
+    K
     y0_pdf='low_base_rate_sinusoid',
     y1_pdf='sinusoid',
     pi_pdf='linear',
     error_min=0.05,
     error_max=0.25
-):
+):  
+
     
     alpha_0, alpha_1, beta_0, beta_1 = np.random.uniform(error_min, error_max, 4)
 
@@ -60,16 +62,14 @@ def generate_syn_data(
     x = np.linspace(-1, 1, num=NS)
     eta_star_0 = eta(x, environment=y0_pdf)
     eta_star_1 = eta(x, environment=y1_pdf)
-    eta_y_0 = ccn_model(eta_star_0, alpha_0, beta_0)
-    eta_y_1 = ccn_model(eta_star_1, alpha_1, beta_1)
 
     # Sample from target potential outcome class probability distributions
     YS_0 = np.random.binomial(1, eta_star_0, size=NS)
     YS_1 = np.random.binomial(1, eta_star_1, size=NS)
 
     # Apply measurement error model
-    Y_0 = YS_0.copy()
-    Y_0[(YS_0==0) & (np.random.binomial(1, alpha_0, size=NS)==1)] = 1
+    Y1_0 = YS_0.copy()
+    Y1_0[(YS_0==0) & (np.random.binomial(1, alpha_0, size=NS)==1)] = 1
     Y_0[(YS_0==1) & (np.random.binomial(1, beta_0, size=NS)==1)] = 0
 
     Y_1 = YS_1.copy()

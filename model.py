@@ -21,12 +21,12 @@ class MLP(nn.Module):
         return self.layers(x)
   
 
-def train(model, train_loader, error_params, n_epochs):
+def train(model, target, train_loader, error_params, n_epochs):
     
     opt = optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
     epoch_loss = []
 
-    for epoch in tqdm(range(0, n_epochs)):
+    for epoch in tqdm(range(0, n_epochs), desc=f"Target: {target}"):
         current_loss = 0.0
         for i, data in enumerate(train_loader, 0):
             inputs, targets = data
