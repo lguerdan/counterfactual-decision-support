@@ -6,6 +6,10 @@ from sklearn.metrics import roc_auc_score
 
 from model import *
 
+###########################################################
+######## Error model functions
+###########################################################
+
 def ccn_model(eta_star, alpha, beta):
     return (1 - beta - alpha)*eta_star + alpha
 
@@ -102,38 +106,28 @@ def generate_syn_data(
     
     return expdf, error_params
 
-
-def run_experiment(expdf, do, train_ratio=.7):
-
-    expdf = expdf.sample(frac=1).reset_index(drop=True)
-    split_ix = int(expdf.shape[0]*train_ratio)
-    train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
-
-    exp_results = {
-        'model': [],
-        'AU-ROC': []
-    }
-
-    models = ['Y', 'YD', f'Y_{do}', f'YS_{do}']
+def get_loaders(train_df, val_df, do, target):
     
-    for model in models:
-        clf = MLPClassifier(alpha=0, hidden_layer_sizes=(40, 4))
+    if target == 'YD':
+        train_df = train_df[train_df['D'] == do]
+        target = 'Y'
     
-        if model == 'YD':
-            train = train_df[train_df['D'] == do]
-            target = 'Y'
-        else:
-            train = train_df
-            target = model
+    X_train = torch.Tensor(train_df['X'].to_numpy())[:, None]
+    Y_train = torch.Tensor(train_df[target].to_numpy())[:, None]
+    train_data = torch.utils.data.TensorDataset(X_train, Y_train)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)
 
-        clf.fit(train['X'].to_numpy().reshape(-1, 1), train[target])
-        pyhat = clf.predict_proba(val_df['X'].to_numpy().reshape(-1, 1))
-        auroc = roc_auc_score(val_df[f'YS_{do}'], pyhat[:, 1])
-
-        exp_results['model'].append(model)
-        exp_results['AU-ROC'].append(auroc)
+    X_val = torch.Tensor(val_df['X'].to_numpy())[:, None]
+    Y_val = torch.Tensor(val_df[f'YS_{do}'].to_numpy())[:, None]
+    val_data = torch.utils.data.TensorDataset(X_val, Y_val)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=32, shuffle=False, num_workers=1)
     
-    return exp_results
+    return train_loader, val_loader
+
+
+###########################################################
+######## Parameter estimation
+###########################################################
 
 def ccpe(expdf, do, n_epochs):
 
@@ -164,6 +158,10 @@ def ccpe(expdf, do, n_epochs):
     
     return alpha_hat, beta_hat, debug_info
 
+###########################################################
+######## Experiments
+###########################################################
+
 def run_param_estimation_exp(expdf, error_params, n_epochs=20):
     alpha_0_hat, beta_0_hat, _ = ccpe(expdf, do=0, n_epochs=20)
     alpha_1_hat, beta_1_hat, _ = ccpe(expdf, do=1, n_epochs=20)
@@ -183,7 +181,7 @@ def run_param_estimation_exp(expdf, error_params, n_epochs=20):
     
     return exp_results
 
-def run_torch_experiment(expdf, do, error_params, n_epochs=5, train_ratio=.7):
+def run_baseline_comparison_exp(expdf, do, error_params, n_epochs=5, train_ratio=.7):
 
     expdf = expdf.sample(frac=1).reset_index(drop=True)
     split_ix = int(expdf.shape[0]*train_ratio)
@@ -221,21 +219,3 @@ def run_torch_experiment(expdf, do, error_params, n_epochs=5, train_ratio=.7):
     
     return exp_results, val_scores
 
-
-def get_loaders(train_df, val_df, do, target):
-    
-    if target == 'YD':
-        train_df = train_df[train_df['D'] == do]
-        target = 'Y'
-    
-    X_train = torch.Tensor(train_df['X'].to_numpy())[:, None]
-    Y_train = torch.Tensor(train_df[target].to_numpy())[:, None]
-    train_data = torch.utils.data.TensorDataset(X_train, Y_train)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)
-
-    X_val = torch.Tensor(val_df['X'].to_numpy())[:, None]
-    Y_val = torch.Tensor(val_df[f'YS_{do}'].to_numpy())[:, None]
-    val_data = torch.utils.data.TensorDataset(X_val, Y_val)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=32, shuffle=False, num_workers=1)
-    
-    return train_loader, val_loader
