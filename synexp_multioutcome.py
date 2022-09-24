@@ -47,16 +47,18 @@ def pi(x, func):
 
 def generate_syn_data_multioutcome(
     NS,
-    K
-    y0_pdf='low_base_rate_sinusoid',
-    y1_pdf='sinusoid',
+    K,
+    y0_pdf='sinusoid',
+    y1_pdf='low_base_rate_sinusoid',
     pi_pdf='linear',
     error_min=0.05,
     error_max=0.25
 ):  
 
-    
-    alpha_0, alpha_1, beta_0, beta_1 = np.random.uniform(error_min, error_max, 4)
+    alpha_0_arr = np.random.uniform(error_min, error_max, K)
+    alpha_1_arr = np.random.uniform(error_min, error_max, K)
+    beta_0_arr = np.random.uniform(error_min, error_max, K)
+    beta_1_arr = np.random.uniform(error_min, error_max, K)
 
     # Define class probability functions
     x = np.linspace(-1, 1, num=NS)
@@ -67,50 +69,61 @@ def generate_syn_data_multioutcome(
     YS_0 = np.random.binomial(1, eta_star_0, size=NS)
     YS_1 = np.random.binomial(1, eta_star_1, size=NS)
 
-    # Apply measurement error model
-    Y1_0 = YS_0.copy()
-    Y1_0[(YS_0==0) & (np.random.binomial(1, alpha_0, size=NS)==1)] = 1
-    Y_0[(YS_0==1) & (np.random.binomial(1, beta_0, size=NS)==1)] = 0
+    Y_0 = np.matlib.repmat(YS_0, K, 1).T
+    Y_1 = np.matlib.repmat(YS_1, K, 1).T
 
-    Y_1 = YS_1.copy()
-    Y_1[(YS_1==0) & (np.random.binomial(1, alpha_1, size=NS)==1)] = 1
-    Y_1[(YS_1==1) & (np.random.binomial(1, beta_1, size=NS)==1)] = 0
+    alpha_0_errors = np.array([np.random.binomial(1, alpha_0_arr[i], size=NS) for i in range(K)]).T
+    alpha_1_errors = np.array([np.random.binomial(1, alpha_1_arr[i], size=NS) for i in range(K)]).T
+
+    beta_0_errors = np.array([np.random.binomial(1, beta_0_arr[i], size=NS) for i in range(K)]).T
+    beta_1_errors = np.array([np.random.binomial(1, beta_1_arr[i], size=NS) for i in range(K)]).T
+
+    Y_0[alpha_0_errors == 1] = 1
+    Y_0[beta_0_errors == 1] = 0
+
+    Y_1[alpha_1_errors == 1] = 1
+    Y_1[beta_1_errors == 1] = 0
 
     # Apply consistency assumption to observe potential outcomes
-    YS, Y = np.zeros(NS, dtype=np.int64), np.zeros(NS, dtype=np.int64)
-    D = np.random.binomial(1, pi(x, func=pi_pdf), size=NS)
+    YS = np.zeros(NS, dtype=np.int64)
+    Y = np.zeros_like(Y_0)
 
+    D = np.random.binomial(1, pi(x, func=pi_pdf), size=NS)
     YS[D==0] = YS_0[D==0]
     YS[D==1] = YS_1[D==1]
 
-    Y[D==0] = Y_0[D==0]
-    Y[D==1] = Y_1[D==1]
-
-    expdf = pd.DataFrame({
+    Y[D==0,:] = Y_0[D==0,:]
+    Y[D==1,:] = Y_1[D==1,:]
+        
+    dataset = {
         'X': x,
         'YS_0': YS_0,
         'YS_1': YS_1,
-        'Y_0': Y_0,
-        'Y_1': Y_1,
         'D': D,
-        'YS': YS,
-        'Y': Y
-    })
-    
-    error_params = {
-        'alpha_0': alpha_0,
-        'alpha_1': alpha_1, 
-        'beta_0': beta_0, 
-        'beta_1': beta_1
+        'YS': YS
     }
-    
-    return expdf, error_params
 
-def get_loaders(train_df, val_df, do, target):
+    for yx in range(Y.shape[1]):
+        dataset[f'Y{yx}'] = Y[:,yx]
+        dataset[f'Y{yx}_0'] = Y_0[:,yx]
+        dataset[f'Y{yx}_1'] = Y_1[:,yx]
+
+    error_params = {
+        'alpha_0': alpha_0_arr,
+        'alpha_1': alpha_1_arr,
+        'beta_0': beta_0_arr,
+        'beta_1': beta_1_arr
+    }
+
+    return pd.DataFrame(dataset), error_params
+
+def get_loaders(train_df, val_df, do, target, conditional):
     
-    if target == 'YD':
+    if conditional:
+        print(f'do: {do}')
         train_df = train_df[train_df['D'] == do]
-        target = 'Y'
+
+    print(f'target is: {target}')
     
     X_train = torch.Tensor(train_df['X'].to_numpy())[:, None]
     Y_train = torch.Tensor(train_df[target].to_numpy())[:, None]
@@ -124,12 +137,11 @@ def get_loaders(train_df, val_df, do, target):
     
     return train_loader, val_loader
 
-
 ###########################################################
 ######## Parameter estimation
 ###########################################################
 
-def ccpe(expdf, do, n_epochs):
+def ccpe(expdf, do, target, n_epochs):
 
     # Don't need error params for surrogate at this stage
     error_params = {
@@ -137,12 +149,10 @@ def ccpe(expdf, do, n_epochs):
         'beta': None
     }
     
-    expdf = expdf.sample(frac=1).reset_index(drop=True)
-    expdf = expdf[expdf['D'] == do]
     split_ix = int(expdf.shape[0]*.7)
     train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
 
-    train_loader, val_loader = get_loaders(train_df, val_df, do, target='Y')
+    train_loader, val_loader = get_loaders(train_df, val_df, do, target=target, conditional=True)
     model = MLP()
     losses = train(model, 'Y|D', train_loader, error_params=error_params, n_epochs=n_epochs)
     x, y, py_hat = evaluate(model, val_loader)
@@ -162,30 +172,6 @@ def ccpe(expdf, do, n_epochs):
 ######## Experiments
 ###########################################################
 
-def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=.7):
-    expdf = expdf.sample(frac=1).reset_index(drop=True)
-    split_ix = int(expdf.shape[0]*train_ratio)
-    train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
-    target = baseline['target']
-    
-    # Train model
-    train_loader, val_loader = get_loaders(train_df, val_df, do, target)
-    model = MLP()
-    losses = train(model, target, train_loader, error_params=surrogate_params, n_epochs=n_epochs)
-    
-    # Evaluate on validation data
-    x, y, py_hat = evaluate(model, val_loader)
-    y_hat = (py_hat > .5)
-    auroc = roc_auc_score(y, py_hat)
-    acc = (y_hat == y).mean()
-
-    results = {}
-    results['AU-ROC'] = auroc
-    results['ACC'] = acc
-    results['x'] = x
-    results['y'] = y
-    results['py_hat'] = py_hat
-
 
 def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=.7):
     
@@ -193,9 +179,11 @@ def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=
     split_ix = int(expdf.shape[0]*train_ratio)
     train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
     target = baseline['target']
+
+    conditional = True if 'Conditional' in baseline['model'] else False
     
     # Train model
-    train_loader, val_loader = get_loaders(train_df, val_df, do, target)
+    train_loader, val_loader = get_loaders(train_df, val_df, do, target, conditional)
     model = MLP()
     losses = train(model, target, train_loader, error_params=surrogate_params, n_epochs=n_epochs)
     

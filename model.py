@@ -10,7 +10,9 @@ class MLP(nn.Module):
         self.layers = nn.Sequential(
           nn.Linear(1, 40),
           nn.ReLU(),
-          nn.Linear(40, 4),
+          nn.Linear(40, 20),
+          nn.ReLU(),
+          nn.Linear(20, 4),
           nn.ReLU(),
           nn.Linear(4, 1),
           nn.Sigmoid()
@@ -29,10 +31,10 @@ def train(model, target, train_loader, error_params, n_epochs):
     for epoch in tqdm(range(0, n_epochs), desc=f"Target: {target}"):
         current_loss = 0.0
         for i, data in enumerate(train_loader, 0):
-            inputs, targets = data
+            x, y = data
             opt.zero_grad()
-            outputs = model(inputs)
-            loss = get_loss(outputs, targets, error_params['alpha'], error_params['beta'])
+            outputs = model(x)
+            loss = get_loss(outputs, y, error_params['alpha'], error_params['beta'])
             loss.backward()
             opt.step()
             current_loss += loss.item()
