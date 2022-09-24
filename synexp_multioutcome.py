@@ -1,6 +1,7 @@
 import random, torch
 import numpy as np
 import pandas as pd
+import numpy.matlib
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import roc_auc_score
 
@@ -45,9 +46,9 @@ def pi(x, func):
     elif func=='linear': 
         return .2 * x + .4
 
-def generate_syn_data_multioutcome(
+def generate_syn_data(
     NS,
-    K,
+    K=1,
     y0_pdf='sinusoid',
     y1_pdf='low_base_rate_sinusoid',
     pi_pdf='linear',
@@ -120,10 +121,7 @@ def generate_syn_data_multioutcome(
 def get_loaders(train_df, val_df, do, target, conditional):
     
     if conditional:
-        print(f'do: {do}')
         train_df = train_df[train_df['D'] == do]
-
-    print(f'target is: {target}')
     
     X_train = torch.Tensor(train_df['X'].to_numpy())[:, None]
     Y_train = torch.Tensor(train_df[target].to_numpy())[:, None]
@@ -203,7 +201,7 @@ def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=
     return results
 
 
-def run_baseline_comparison_exp(baselines, do, N_RUNS, NS, n_epochs=5):
+def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
 
     Y0_PDF = 'sinusoid'
     Y1_PDF = 'low_base_rate_sinusoid'
@@ -219,6 +217,7 @@ def run_baseline_comparison_exp(baselines, do, N_RUNS, NS, n_epochs=5):
 
         expdf, error_params = generate_syn_data(
             NS,
+            K,
             y0_pdf=Y0_PDF,
             y1_pdf=Y1_PDF,
             pi_pdf=PI_PDF,
