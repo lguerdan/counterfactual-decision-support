@@ -7,6 +7,11 @@ from sklearn.metrics import roc_auc_score
 
 from model import *
 
+
+Y0_PDF = 'sinusoid'
+Y1_PDF = 'low_base_rate_sinusoid'
+PI_PDF = 'linear'
+
 ###########################################################
 ######## Error model functions
 ###########################################################
@@ -49,9 +54,9 @@ def pi(x, func):
 def generate_syn_data(
     NS,
     K=1,
-    y0_pdf='sinusoid',
-    y1_pdf='low_base_rate_sinusoid',
-    pi_pdf='linear',
+    y0_pdf=Y0_PDF,
+    y1_pdf=Y1_PDF,
+    pi_pdf=PI_PDF,
     error_min=0.05,
     error_max=0.25
 ):  
@@ -203,9 +208,6 @@ def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=
 
 def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
 
-    Y0_PDF = 'sinusoid'
-    Y1_PDF = 'low_base_rate_sinusoid'
-    PI_PDF = 'linear'
         
     exp_results = {
         'model': [],
@@ -228,8 +230,8 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
         for baseline in baselines:
             target = baseline['target']
             surrogate_params = {
-                'alpha': error_params[f'alpha_{do}'] if baseline['target'] == 'Conditional outcome (SL)' else None,
-                'beta': error_params[f'beta_{do}'] if baseline['target'] == 'Conditional outcome (SL)' else None
+                'alpha': error_params[f'alpha_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None,
+                'beta': error_params[f'beta_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None
             }
             results = run_baseline(expdf, baseline, do, surrogate_params, n_epochs=n_epochs, train_ratio=.7)
             exp_results['model'].append(baseline['model'])
@@ -238,22 +240,120 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
             
     return exp_results
 
-def run_param_estimation_exp(expdf, error_params, n_epochs=20):
-    alpha_0_hat, beta_0_hat, _ = ccpe(expdf, do=0, n_epochs=20)
-    alpha_1_hat, beta_1_hat, _ = ccpe(expdf, do=1, n_epochs=20)
-    
-    exp_results = error_params.copy()
-    exp_results['NS'] = expdf.shape[0]
 
-    exp_results['alpha_0_hat'] = alpha_0_hat
-    exp_results['alpha_1_hat'] = alpha_1_hat
-    exp_results['beta_0_hat'] = beta_0_hat
-    exp_results['beta_1_hat'] = beta_1_hat
-    
-    exp_results['alpha_0_error'] = np.abs(alpha_0_hat-error_params['alpha_0'])
-    exp_results['alpha_1_error'] = np.abs(alpha_1_hat-error_params['alpha_1'])
-    exp_results['beta_0_error'] = np.abs(beta_0_hat-error_params['beta_0'])
-    exp_results['beta_1_error'] = np.abs(beta_1_hat-error_params['beta_1'])
-    
-    return exp_results
+def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
 
+    exp_results =  []
+    py_results = {}
+
+    for NS in SAMPLE_SIZES:
+        py_results[NS] = {}
+        for RUN in range(N_RUNS):
+            py_results[NS][RUN] = {}
+
+            expdf, error_params = generate_syn_data(
+                NS=NS,
+                K=K,
+                y0_pdf=Y0_PDF,
+                y1_pdf=Y1_PDF,
+                pi_pdf=PI_PDF,
+                error_min=0.05,
+                error_max=0.25
+            )
+            expdf = expdf.sample(frac=1).reset_index(drop=True)
+
+            result = error_params.copy()
+            result['NS'] = expdf.shape[0]
+            result['alpha_hat'] = np.zeros((2, K))
+            result['beta_hat'] = np.zeros((2, K))
+            result['alpha_error'] = np.zeros((2, K))
+            result['beta_error'] = np.zeros((2, K))
+
+            for k in range(K):
+                py_results[NS][RUN][k] = {}
+                for d in [0, 1]:
+                    py_results[NS][RUN][k][d] = {}
+                    alpha_hat, beta_hat, val_preds = ccpe(expdf, target=f'Y{k}', do=d, n_epochs=n_epochs)
+                    result['alpha_hat'][d][k] = alpha_hat
+                    result['beta_hat'][d][k] = beta_hat
+
+                    py_results[NS][RUN][k][d]['x'] = val_preds['val_x']
+                    py_results[NS][RUN][k][d]['py'] = val_preds['val_py']
+                    result['alpha_error'][d][k] = result['alpha_hat'][d][k] - error_params[f'alpha_{d}'][k]
+                    result['beta_error'][d][k] = result['beta_hat'][d][k] - error_params[f'beta_{d}'][k]
+
+
+            # Compute mean aggregate
+            eta_0_bar = np.array([py_results[NS][RUN][k][0]['py'] for k in range(K)]).mean(axis=0).squeeze()
+            alpha_0_bar_hat = eta_0_bar.min()
+            beta_0_bar_hat = 1-eta_0_bar.max()
+
+            eta_1_bar = np.array([py_results[NS][RUN][k][1]['py'] for k in range(K)]).mean(axis=0).squeeze()
+            alpha_1_bar_hat = eta_1_bar.min()
+            beta_1_bar_hat = 1-eta_1_bar.max()   
+
+            py_results[NS][RUN]['eta_0_bar'] = eta_0_bar
+            py_results[NS][RUN]['eta_1_bar'] = eta_1_bar
+
+            result['alpha_0_bar_hat'] = alpha_0_bar_hat
+            result['alpha_1_bar_hat'] = alpha_1_bar_hat
+            result['beta_0_bar_hat'] = beta_0_bar_hat
+            result['beta_1_bar_hat'] = beta_1_bar_hat
+
+            result['alpha_0_bar_error'] = alpha_0_bar_hat - error_params[f'alpha_0'].mean()
+            result['alpha_1_bar_error'] = alpha_1_bar_hat - error_params[f'alpha_1'].mean()
+            result['beta_0_bar_error'] = beta_0_bar_hat - error_params[f'beta_0'].mean()
+            result['beta_1_bar_error'] = beta_1_bar_hat - error_params[f'beta_1'].mean()
+
+            exp_results.append(result)
+    
+    return exp_results, py_results
+
+def get_ccpe_result_df(do, exp_results):
+    full_exp_results = []
+    for result in exp_results:
+        for k in range(result['alpha_error'].shape[1]):
+            
+            full_exp_results.extend([{
+                'NS': result['NS'],
+                'parameter': 'alpha',
+                'error': result['alpha_error'][do][k],
+                'aggregate': False
+            },{
+                'NS': result['NS'],
+                'parameter': 'beta',
+                'error': result['beta_error'][do][k],
+                'aggregate': False
+            },{
+                'NS': result['NS'],
+                'parameter': 'alpha',
+                'error': result[f'alpha_{do}_bar_error'],
+                'aggregate': True
+            },{
+                'NS': result['NS'],
+                'parameter': 'beta',
+                'error': result[f'beta_{do}_bar_error'],
+                'aggregate': True
+            }])
+            
+                          
+    return pd.DataFrame(full_exp_results)
+
+# def run_param_estimation_exp(expdf, error_params, n_epochs=20):
+    # alpha_0_hat, beta_0_hat, _ = ccpe(expdf, target='Y0', do=0, n_epochs=n_epochs)
+    # alpha_1_hat, beta_1_hat, _ = ccpe(expdf, target='Y0', do=1, n_epochs=n_epochs)
+    
+    # exp_results = error_params.copy()
+    # exp_results['NS'] = expdf.shape[0]
+
+    # exp_results['alpha_0_hat'] = alpha_0_hat
+    # exp_results['alpha_1_hat'] = alpha_1_hat
+    # exp_results['beta_0_hat'] = beta_0_hat
+    # exp_results['beta_1_hat'] = beta_1_hat
+    
+    # exp_results['alpha_0_error'] = alpha_0_hat-error_params['alpha_0']
+    # exp_results['alpha_1_error'] = alpha_1_hat-error_params['alpha_1']
+    # exp_results['beta_0_error'] = beta_0_hat-error_params['beta_0']
+    # exp_results['beta_1_error'] = beta_1_hat-error_params['beta_1']
+    
+    # return exp_results
