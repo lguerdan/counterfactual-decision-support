@@ -68,7 +68,7 @@ def get_loss(y_hat, y, alpha_d=None, beta_d=None):
     loss_func = torch.nn.BCELoss()
     if not alpha_d:
         return loss_func(y_hat, y) 
-        
+
     pos_loss = loss_func(y_hat[y==1], y[y==1])
     neg_loss = loss_func(y_hat[y==0], y[y==0])
 
