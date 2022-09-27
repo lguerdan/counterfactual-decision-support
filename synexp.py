@@ -56,10 +56,10 @@ def eta(x, environment):
 
 def pi(x, func):
     if func=='uniform': 
-        return np.ones(x.shape)
+        return .5*np.ones(x.shape)
         
     elif func=='linear': 
-        return .2 * x + .4
+        return .39 * x + .5
 
 def generate_syn_data(
     NS,
@@ -205,12 +205,15 @@ def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=
     
     # Evaluate on validation data
     x, y, py_hat = evaluate(model, val_loader)
-    y_hat = (py_hat > .5)
+    y_hat = np.zeros_like(y)
+    y_hat[py_hat > .5] = 1
     auroc = roc_auc_score(y, py_hat)
     acc = (y_hat == y).mean()
 
     results = {}
     results['AU-ROC'] = auroc
+    results['FPR'] = ((y_hat==1) & (y ==0)).sum() / (y==0).sum()
+    results['FNR'] = ((y_hat==0) & (y ==1)).sum() / (y==1).sum()
     results['ACC'] = acc
     results['x'] = x
     results['y'] = y
@@ -225,7 +228,9 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
     exp_results = {
         'model': [],
         'AU-ROC': [],
-        'ACC': []
+        'ACC': [],
+        'FPR': [],
+        'FNR': [],
     }
     
     for RUN in range(N_RUNS):
@@ -236,10 +241,10 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
             y0_pdf=Y0_PDF,
             y1_pdf=Y1_PDF,
             pi_pdf=PI_PDF,
-            error_min=0.20,
-            error_max=0.2499
+            error_min=0.24,
+            error_max=0.2499,
+            shuffle=True
         )
-        expdf = expdf.sample(frac=1).reset_index(drop=True)
         
         for baseline in baselines:
             target = baseline['target']
@@ -251,6 +256,8 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS, K=1, n_epochs=5):
             exp_results['model'].append(baseline['model'])
             exp_results['AU-ROC'].append(results['AU-ROC'])
             exp_results['ACC'].append(results['ACC'])
+            exp_results['FPR'].append(results['FPR'])
+            exp_results['FNR'].append(results['FNR'])
             
     return exp_results
 
@@ -285,7 +292,7 @@ def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
 
             for k in range(K):
                 py_results[NS][RUN][k] = {}
-                for d in [0, 1]:
+                for d in [0]:
                     py_results[NS][RUN][k][d] = {}
                     alpha_hat, beta_hat, val_preds = ccpe(expdf, target=f'Y{k}', do=d, n_epochs=n_epochs)
                     result['alpha_hat'][d][k] = alpha_hat
@@ -302,22 +309,22 @@ def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
             alpha_0_bar_hat = eta_0_bar.min()
             beta_0_bar_hat = 1-eta_0_bar.max()
 
-            eta_1_bar = np.array([py_results[NS][RUN][k][1]['py'] for k in range(K)]).mean(axis=0).squeeze()
-            alpha_1_bar_hat = eta_1_bar.min()
-            beta_1_bar_hat = 1-eta_1_bar.max()   
+            # eta_1_bar = np.array([py_results[NS][RUN][k][1]['py'] for k in range(K)]).mean(axis=0).squeeze()
+            # alpha_1_bar_hat = eta_1_bar.min()
+            # beta_1_bar_hat = 1-eta_1_bar.max()   
 
             py_results[NS][RUN]['eta_0_bar'] = eta_0_bar
-            py_results[NS][RUN]['eta_1_bar'] = eta_1_bar
+            # py_results[NS][RUN]['eta_1_bar'] = eta_1_bar
 
             result['alpha_0_bar_hat'] = alpha_0_bar_hat
-            result['alpha_1_bar_hat'] = alpha_1_bar_hat
+            # result['alpha_1_bar_hat'] = alpha_1_bar_hat
             result['beta_0_bar_hat'] = beta_0_bar_hat
-            result['beta_1_bar_hat'] = beta_1_bar_hat
+            # result['beta_1_bar_hat'] = beta_1_bar_hat
 
             result['alpha_0_bar_error'] = alpha_0_bar_hat - error_params[f'alpha_0'].mean()
-            result['alpha_1_bar_error'] = alpha_1_bar_hat - error_params[f'alpha_1'].mean()
+            # result['alpha_1_bar_error'] = alpha_1_bar_hat - error_params[f'alpha_1'].mean()
             result['beta_0_bar_error'] = beta_0_bar_hat - error_params[f'beta_0'].mean()
-            result['beta_1_bar_error'] = beta_1_bar_hat - error_params[f'beta_1'].mean()
+            # result['beta_1_bar_error'] = beta_1_bar_hat - error_params[f'beta_1'].mean()
 
             exp_results.append(result)
     

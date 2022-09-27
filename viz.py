@@ -17,8 +17,8 @@ def viz_ccpe_estimates(expdf, debug_info, alpha, beta, do, y0_pdf, y1_pdf, pi_pd
     axs.plot(X, eta_d_star, label=f'$\eta^*_{do}(x)$')
     axs.plot(X, eta_d, label=f'$\eta_{do}(x)$', color='black')
     axs.plot(X, pix, label='$\pi(x)$', color='orange', linestyle='--')
-    if debug_info['val_py']:
-        plt.scatter(debug_info['val_x'], debug_info['val_py'], marker='x', color='black', label=f'$\hat\eta_{do}(x)$')
+    # if debug_info['val_py'] != None:
+    plt.scatter(debug_info['val_x'], debug_info['val_py'], marker='x', color='black', label=f'$\hat\eta_{do}(x)$')
     plt.legend(bbox_to_anchor=(1.2, 1))
     plt.xlabel('X')
     plt.ylabel('P')
