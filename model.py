@@ -19,7 +19,6 @@ class MLP(nn.Module):
         )
 
     def forward(self, x):
-        '''Forward pass'''
         return self.layers(x)
   
 
@@ -63,16 +62,22 @@ def evaluate(model, val_loader):
     
     return x, y, py_hat
 
-def get_loss(y_hat, y, alpha_d=None, beta_d=None):
+def get_loss(py_hat, y, alpha_d=None, beta_d=None):
+    '''Surrogate loss parameterized by alpha_d, beta_d'''
 
-    loss_func = torch.nn.BCELoss()
-    if not alpha_d:
-        return loss_func(y_hat, y) 
+    if not alpha_d and not beta_d:
+        loss = torch.nn.BCELoss()
+        return loss(py_hat, y) 
 
-    pos_loss = loss_func(y_hat[y==1], y[y==1])
-    neg_loss = loss_func(y_hat[y==0], y[y==0])
+    loss = torch.nn.BCELoss(reduction='none')
 
-    pos_label_losses = ((1-alpha_d)*pos_loss - beta_d*neg_loss)/(1-beta_d-alpha_d)
-    neg_label_losses = ((1-beta_d)*neg_loss - alpha_d*pos_loss)/(1-beta_d-alpha_d)
+    phat_y1 = py_hat[y==1]
+    phat_y0 = py_hat[y==0]
 
-    return pos_label_losses + neg_label_losses
+    y1_losses = ((1-alpha_d)*loss(phat_y1, torch.ones_like(phat_y1)) -
+    beta_d*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta_d-alpha_d)
+
+    y0_losses = ((1-beta_d)*loss(phat_y0, torch.zeros_like(phat_y0)) -
+    alpha_d*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta_d-alpha_d)
+
+    return torch.cat([y1_losses, y0_losses]).mean()
