@@ -259,48 +259,6 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
             
     return exp_results
 
-def run_baseline_comparison_exp_old(baselines, do,  N_RUNS, NS,
-    pi_pdf='linear',K=1, n_epochs=5, alpha_min=0, alpha_max=.49, beta_min=0, beta_max=.49):
-
-    
-    exp_results = {
-        'model': [],
-        'AU-ROC': [],
-        'ACC': [],
-        'alpha': [],
-        'beta': []
-    }
-    
-    for RUN in range(N_RUNS):
-
-        expdf, error_params = generate_syn_data(
-            NS,
-            K,
-            y0_pdf=Y0_PDF,
-            y1_pdf=Y1_PDF,
-            pi_pdf=pi_pdf,
-            alpha_min=alpha_min,
-            alpha_max=alpha_max,
-            beta_min=beta_min,
-            beta_max=beta_max,
-            shuffle=True
-        )
-        
-        for baseline in baselines:
-            target = baseline['target']
-            surrogate_params = {
-                'alpha': error_params[f'alpha_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None,
-                'beta': error_params[f'beta_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None
-            }
-            results = run_baseline(expdf, baseline, do, surrogate_params, n_epochs=n_epochs, train_ratio=.7)
-            exp_results['model'].append(baseline['model'])
-            exp_results['AU-ROC'].append(results['AU-ROC'])
-            exp_results['ACC'].append(results['ACC'])
-            exp_results['alpha'].append(error_params[f'alpha_{do}'][0])
-            exp_results['beta'].append(error_params[f'beta_{do}'][0])
-            
-    return exp_results
-
 def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
     pi_pdf='linear',K=1, n_epochs=5, alpha_min=0, alpha_max=.49, beta_min=0, beta_max=.49):
 
@@ -323,9 +281,6 @@ def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
       'alpha':.1,
       'beta':.3
     },]
-
-    # for alpha in [0, .05, .1, .15, .2]:
-    #     for beta in [0, .05, .1, .15, .2]:
 
     for config in configs:
         print(config['alpha'], config['beta'])
@@ -358,7 +313,7 @@ def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
                 exp_results['alpha'].append(config['alpha'])
                 exp_results['beta'].append(config['beta'])
                 
-        return exp_results
+    return exp_results
 
 def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
 
