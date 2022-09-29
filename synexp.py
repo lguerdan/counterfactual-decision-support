@@ -315,6 +315,60 @@ def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
                 
     return exp_results
 
+def run_estimation_error_exp(do, param_configs, error_param, NS, N_RUNS, n_epochs=5, train_ratio=.7):
+    
+    baseline = {
+        'model': 'Conditional outcome (SL)',
+        'target': 'Y0'
+    }
+
+    results = []
+    for config in param_configs:
+        surrogate = {}
+
+        if error_param == 'alpha':
+            alpha = config['param']
+            surrogate['alpha'] = config['estimate']
+            beta = 0
+            surrogate['beta'] = 0
+
+        if error_param == 'beta':
+            beta = config['param']
+            surrogate['beta'] = config['estimate']
+            alpha = 0
+            surrogate['alpha'] = 0
+            
+        for run in range(N_RUNS):
+
+            expdf, error_params = generate_syn_data(
+                NS=NS,
+                K=1,
+                y0_pdf=Y0_PDF,
+                y1_pdf=Y1_PDF,
+                pi_pdf=PI_PDF,
+                alpha_min=alpha,
+                alpha_max=alpha+.001,
+                beta_min=beta,
+                beta_max=beta+.001,
+                shuffle=True
+            )
+
+            run = run_baseline(expdf, baseline, do=0,
+                                    surrogate_params=surrogate, n_epochs=n_epochs, train_ratio=.7)
+            result = {
+                'AU-ROC': run['AU-ROC'],
+                'ACC': run['ACC'],
+                'alpha': alpha,
+                'beta': beta, 
+                'alpha_hat': surrogate['alpha'],
+                'beta_hat': surrogate['beta'],
+                'error_param': error_param
+            }
+
+            results.append(result)
+        
+    return results
+
 def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
 
     exp_results =  []
