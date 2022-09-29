@@ -301,6 +301,64 @@ def run_baseline_comparison_exp_old(baselines, do,  N_RUNS, NS,
             
     return exp_results
 
+def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
+    pi_pdf='linear',K=1, n_epochs=5, alpha_min=0, alpha_max=.49, beta_min=0, beta_max=.49):
+
+    
+    exp_results = {
+        'model': [],
+        'AU-ROC': [],
+        'ACC': [],
+        'alpha': [],
+        'beta': []
+    }
+
+    configs = [{
+      'alpha':0,
+      'beta':0
+    },{
+      'alpha':.3,
+      'beta':.1
+    },{
+      'alpha':.1,
+      'beta':.3
+    },]
+
+    # for alpha in [0, .05, .1, .15, .2]:
+    #     for beta in [0, .05, .1, .15, .2]:
+
+    for config in configs:
+        print(config['alpha'], config['beta'])
+    
+        for RUN in range(N_RUNS):
+
+            expdf, error_params = generate_syn_data(
+                NS,
+                K,
+                y0_pdf=Y0_PDF,
+                y1_pdf=Y1_PDF,
+                pi_pdf=pi_pdf,
+                alpha_min=config['alpha'],
+                alpha_max=config['alpha']+.001,
+                beta_min=config['beta'],
+                beta_max=config['beta']+.001,
+                shuffle=True
+            )
+            
+            for baseline in baselines:
+                target = baseline['target']
+                surrogate_params = {
+                    'alpha': error_params[f'alpha_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None,
+                    'beta': error_params[f'beta_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None
+                }
+                results = run_baseline(expdf, baseline, do, surrogate_params, n_epochs=n_epochs, train_ratio=.7)
+                exp_results['model'].append(baseline['model'])
+                exp_results['AU-ROC'].append(results['AU-ROC'])
+                exp_results['ACC'].append(results['ACC'])
+                exp_results['alpha'].append(config['alpha'])
+                exp_results['beta'].append(config['beta'])
+                
+        return exp_results
 
 def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
 

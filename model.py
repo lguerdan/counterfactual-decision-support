@@ -81,3 +81,23 @@ def get_loss(py_hat, y, alpha_d=None, beta_d=None):
     alpha_d*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta_d-alpha_d)
 
     return torch.cat([y1_losses, y0_losses]).mean()
+
+# def get_loss(py_hat, y, alpha_d=None, beta_d=None):
+    # '''Surrogate loss parameterized by alpha_d, beta_d'''
+
+    # if not alpha_d and not beta_d:
+    #     loss = torch.nn.BCELoss()
+    #     return loss(py_hat, y) 
+
+    # loss = torch.nn.BCELoss()
+
+    # phat_y1 = py_hat[y==1]
+    # phat_y0 = py_hat[y==0]
+
+    # y1_losses = ((1-alpha_d)*loss(phat_y1, torch.ones_like(phat_y1)) -
+    # beta_d*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta_d-alpha_d)
+
+    # y0_losses = ((1-beta_d)*loss(phat_y0, torch.zeros_like(phat_y0)) -
+    # alpha_d*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta_d-alpha_d)
+
+    # return (y1_losses+y0_losses)/2
