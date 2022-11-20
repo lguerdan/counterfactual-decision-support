@@ -1,5 +1,5 @@
 .ipynb_checkpoints/
-fig/*
+figs/*
 runs/*
 .DS_Store
 *.pyc
