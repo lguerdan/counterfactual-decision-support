@@ -59,17 +59,17 @@ def generate_syn_data(
     y0_pdf=Y0_PDF,
     y1_pdf=Y1_PDF,
     pi_pdf=PI_PDF,
-    alpha_min=0.00,
-    alpha_max=0.49,
-    beta_min=0.00,
-    beta_max=0.49,
-    shuffle=False
+    alpha_0=0,
+    alpha_1=0,
+    beta_0=0,
+    beta_1=0,
+    shuffle=True
 ):  
 
-    alpha_0_arr = np.random.uniform(alpha_min, alpha_max, K)
-    alpha_1_arr = np.random.uniform(alpha_min, alpha_max, K)
-    beta_0_arr = np.random.uniform(beta_min, beta_max, K)
-    beta_1_arr = np.random.uniform(beta_min, beta_max, K)
+    alpha_0_arr = alpha_0*np.ones(K)
+    alpha_1_arr = alpha_1*np.ones(K)
+    beta_0_arr = alpha_0*np.ones(K)
+    beta_1_arr = alpha_1*np.ones(K)
 
     # Define class probability functions
     x = np.linspace(-1, 1, num=NS)
@@ -154,7 +154,7 @@ def get_loaders(train_df, val_df, do, target, conditional):
 
 def ccpe(expdf, do, target, n_epochs):
 
-    error_params = {
+    loss_config = {
         'alpha': None,
         'beta': None
     }
@@ -164,7 +164,7 @@ def ccpe(expdf, do, target, n_epochs):
 
     train_loader, val_loader = get_loaders(train_df, val_df, do, target=target, conditional=True)
     model = MLP()
-    losses = train(model, 'Y|D', train_loader, error_params=error_params, n_epochs=n_epochs)
+    losses = train(model, 'Y|D', train_loader, loss_config=loss_config, n_epochs=n_epochs)
     x, y, py_hat = evaluate(model, val_loader)
     
     # Compute error parameters from predicted probabilities
@@ -183,20 +183,17 @@ def ccpe(expdf, do, target, n_epochs):
 ###########################################################
 
 
-def run_baseline(expdf, baseline, do, surrogate_params, n_epochs=5, train_ratio=.7):
+def run_baseline(expdf, baseline, do, loss_config, n_epochs=5, train_ratio=.7):
     
     split_ix = int(expdf.shape[0]*train_ratio)
     train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
     target = baseline['target']
+    conditional = 'OBS' not in baseline['model']
 
-    conditional = True if 'Conditional' in baseline['model'] else False
-
-    print('surroate params', surrogate_params)
-    
     # Train model
     train_loader, val_loader = get_loaders(train_df, val_df, do, target, conditional)
     model = MLP()
-    losses = train(model, target, train_loader, error_params=surrogate_params, n_epochs=n_epochs)
+    losses = train(model, target, train_loader, loss_config=loss_config, n_epochs=n_epochs)
     
     # Evaluate on validation data
     x, y, py_hat = evaluate(model, val_loader)
@@ -225,9 +222,6 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
         'alpha': [],
         'beta': []
     }
-
-    # for alpha in [0, .05, .1, .15, .2]:
-    #     for beta in [0, .05, .1, .15, .2]:
     
     for RUN in range(N_RUNS):
 
@@ -247,8 +241,8 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
         for baseline in baselines:
             target = baseline['target']
             surrogate_params = {
-                'alpha': error_params[f'alpha_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None,
-                'beta': error_params[f'beta_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None
+                'alpha': error_params[f'alpha_{do}'][0] if 'SL' in baseline['model'] else None,
+                'beta': error_params[f'beta_{do}'][0] if 'SL' in baseline['model'] else None,
             }
             results = run_baseline(expdf, baseline, do, surrogate_params, n_epochs=n_epochs, train_ratio=.7)
             exp_results['model'].append(baseline['model'])
@@ -283,7 +277,6 @@ def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
     },]
 
     for config in configs:
-        print(config['alpha'], config['beta'])
     
         for RUN in range(N_RUNS):
 
@@ -293,10 +286,8 @@ def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
                 y0_pdf=Y0_PDF,
                 y1_pdf=Y1_PDF,
                 pi_pdf=pi_pdf,
-                alpha_min=config['alpha'],
-                alpha_max=config['alpha']+.001,
-                beta_min=config['beta'],
-                beta_max=config['beta']+.001,
+                alpha=config['alpha'],
+                beta=config['beta'],
                 shuffle=True
             )
             
