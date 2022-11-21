@@ -4,21 +4,37 @@ import pandas as pd
 import numpy.matlib
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import roc_auc_score
+from numpy.random import permutation
 
 from model import *
 
-Y0_PDF = 'piecewise_sinusoid'
-Y1_PDF = 'low_base_rate_sinusoid'
-PI_PDF = 'linear'
+Y0_PDF = 'shalt_6cov_baseline'
+Y1_PDF = 'shalt_6cov_intervention'
+PI_PDF = '6cov_linear'
 
 ###########################################################
 ######## Error model functions
 ###########################################################
 
-def ccn_model(eta_star, alpha, beta):
-    return (1 - beta - alpha)*eta_star + alpha
+def pi(x, func):
+    if func=='uniform': 
+        return .5*np.ones(x.shape[0])
+        
+    elif func=='linear': 
+        return .35 * x + .5
+
+    elif func=='6cov_linear':
+        return .7*x.mean(axis=1)
+        
 
 def eta(x, environment):
+    
+    if environment=='shalt_6cov_baseline':
+        return (1/3.35054) * np.sin(x[:,4])*((4*np.power(np.maximum(x[:,0], x[:,5]), 3))/(1+2*np.power(x[:,2], 2)))
+    
+    if environment=='shalt_6cov_intervention':
+        return x.mean(axis=1)
+
     if environment=='sinusoid':
         return .5 + .5 * np.sin(2.9*x + .1)
 
@@ -44,14 +60,6 @@ def eta(x, environment):
              lambda v: 1.4*v+.7,
              lambda v: -1.5*v+1.3,
              lambda v: 1.25*v - .9 ])
-    
-
-def pi(x, func):
-    if func=='uniform': 
-        return .5*np.ones(x.shape)
-        
-    elif func=='linear': 
-        return .35 * x + .5
 
 def generate_syn_data(
     NS,
@@ -68,11 +76,11 @@ def generate_syn_data(
 
     alpha_0_arr = alpha_0*np.ones(K)
     alpha_1_arr = alpha_1*np.ones(K)
-    beta_0_arr = alpha_0*np.ones(K)
-    beta_1_arr = alpha_1*np.ones(K)
+    beta_0_arr = beta_0*np.ones(K)
+    beta_1_arr = beta_1*np.ones(K)
 
     # Define class probability functions
-    x = np.linspace(-1, 1, num=NS)
+    x = np.random.uniform(low=0, high=1, size=(NS, 6))
     eta_star_0 = eta(x, environment=y0_pdf)
     eta_star_1 = eta(x, environment=y1_pdf)
 
@@ -106,8 +114,7 @@ def generate_syn_data(
     Y[D==0,:] = Y_0[D==0,:]
     Y[D==1,:] = Y_1[D==1,:]
         
-    dataset = {
-        'X': x,
+    dataset_y = {
         'YS_0': YS_0,
         'YS_1': YS_1,
         'D': D,
@@ -115,9 +122,9 @@ def generate_syn_data(
     }
 
     for yx in range(Y.shape[1]):
-        dataset[f'Y{yx}'] = Y[:,yx]
-        dataset[f'Y{yx}_0'] = Y_0[:,yx]
-        dataset[f'Y{yx}_1'] = Y_1[:,yx]
+        dataset_y[f'Y{yx}'] = Y[:,yx]
+        dataset_y[f'Y{yx}_0'] = Y_0[:,yx]
+        dataset_y[f'Y{yx}_1'] = Y_1[:,yx]
 
     error_params = {
         'alpha_0': alpha_0_arr,
@@ -125,24 +132,32 @@ def generate_syn_data(
         'beta_0': beta_0_arr,
         'beta_1': beta_1_arr
     }
-    data = pd.DataFrame(dataset)
+
+    X, Y = pd.DataFrame(x), pd.DataFrame(dataset_y)
+   
     if shuffle: 
-        data = data.sample(frac=1).reset_index(drop=True)
+        suffle_ix = permutation(X.index)
+        X = X.iloc[suffle_ix]
+        Y = Y.iloc[suffle_ix]
 
-    return data, error_params
+    return X, Y, error_params
 
-def get_loaders(train_df, val_df, do, target, conditional):
+def get_loaders(X, Y, target, do, conditional, split_frac=.7):
+
     
     if conditional:
-        train_df = train_df[train_df['D'] == do]
+        X = X[Y['D'] == do]
+        Y = Y[Y['D'] == do]
+
+    split_ix = int(X.shape[0]*split_frac)
     
-    X_train = torch.Tensor(train_df['X'].to_numpy())[:, None]
-    Y_train = torch.Tensor(train_df[target].to_numpy())[:, None]
+    X_train = torch.Tensor(X[:split_ix].to_numpy())
+    Y_train = torch.Tensor(Y[:split_ix][target].to_numpy())[:, None]
+    X_val = torch.Tensor(X[split_ix:].to_numpy())
+    Y_val = torch.Tensor(Y[split_ix:][f'YS_{do}'].to_numpy())[:, None]
+    
     train_data = torch.utils.data.TensorDataset(X_train, Y_train)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)
-
-    X_val = torch.Tensor(val_df['X'].to_numpy())[:, None]
-    Y_val = torch.Tensor(val_df[f'YS_{do}'].to_numpy())[:, None]
     val_data = torch.utils.data.TensorDataset(X_val, Y_val)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=32, shuffle=False, num_workers=1)
     
@@ -159,10 +174,7 @@ def ccpe(expdf, do, target, n_epochs):
         'beta': None
     }
     
-    split_ix = int(expdf.shape[0]*.7)
-    train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
-
-    train_loader, val_loader = get_loaders(train_df, val_df, do, target=target, conditional=True)
+    train_loader, val_loader = get_loaders(X, Y, target, do, conditional=True)
     model = MLP()
     losses = train(model, 'Y|D', train_loader, loss_config=loss_config, n_epochs=n_epochs)
     x, y, py_hat = evaluate(model, val_loader)
@@ -183,15 +195,13 @@ def ccpe(expdf, do, target, n_epochs):
 ###########################################################
 
 
-def run_baseline(expdf, baseline, do, loss_config, n_epochs=5, train_ratio=.7):
-    
-    split_ix = int(expdf.shape[0]*train_ratio)
-    train_df, val_df = expdf.iloc[:split_ix,:], expdf.iloc[split_ix:,:]
+def run_baseline(X, Y, baseline, do, loss_config, n_epochs=5, train_ratio=.7):
+
     target = baseline['target']
     conditional = 'OBS' not in baseline['model']
 
     # Train model
-    train_loader, val_loader = get_loaders(train_df, val_df, do, target, conditional)
+    train_loader, val_loader = get_loaders(X, Y, target, do, conditional)
     model = MLP()
     losses = train(model, target, train_loader, loss_config=loss_config, n_epochs=n_epochs)
     
@@ -212,9 +222,8 @@ def run_baseline(expdf, baseline, do, loss_config, n_epochs=5, train_ratio=.7):
     return results
 
 def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
-    pi_pdf='linear',K=1, n_epochs=5, alpha_min=0, alpha_max=.49, beta_min=0, beta_max=.49):
+    pi_pdf='linear',K=1, n_epochs=5, alpha=0, beta=0):
 
-    
     exp_results = {
         'model': [],
         'AU-ROC': [],
@@ -224,27 +233,35 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
     }
     
     for RUN in range(N_RUNS):
+        print(f'=============== RUN: {RUN} ===============')
 
-        expdf, error_params = generate_syn_data(
+        X, Y, error_params = generate_syn_data(
             NS,
             K,
             y0_pdf=Y0_PDF,
             y1_pdf=Y1_PDF,
             pi_pdf=pi_pdf,
-            alpha_min=alpha_min,
-            alpha_max=alpha_max,
-            beta_min=beta_min,
-            beta_max=beta_max,
+            alpha_0=alpha,
+            alpha_1=alpha,
+            beta_0=beta,
+            beta_1=beta,
             shuffle=True
         )
-        
+
         for baseline in baselines:
             target = baseline['target']
-            surrogate_params = {
+
+            loss_config = {
                 'alpha': error_params[f'alpha_{do}'][0] if 'SL' in baseline['model'] else None,
                 'beta': error_params[f'beta_{do}'][0] if 'SL' in baseline['model'] else None,
+                'prop_func': pi,
+                'pi_pdf': pi_pdf,
+                'do': do,
+                'pd': Y['D'].mean(),
+                'reweight': True if 'RW' in baseline['model'] else False
             }
-            results = run_baseline(expdf, baseline, do, surrogate_params, n_epochs=n_epochs, train_ratio=.7)
+
+            results = run_baseline(X, Y, baseline, do, loss_config, n_epochs=n_epochs, train_ratio=.7)
             exp_results['model'].append(baseline['model'])
             exp_results['AU-ROC'].append(results['AU-ROC'])
             exp_results['ACC'].append(results['ACC'])
@@ -253,10 +270,9 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
             
     return exp_results
 
-def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
-    pi_pdf='linear',K=1, n_epochs=5, alpha_min=0, alpha_max=.49, beta_min=0, beta_max=.49):
 
-    
+def run_baseline_comparison_exp_grid(baselines, param_configs, do, N_RUNS, NS, pi_pdf='linear', K=1, n_epochs=5):
+
     exp_results = {
         'model': [],
         'AU-ROC': [],
@@ -265,45 +281,45 @@ def run_baseline_comparison_exp_grid(baselines, do,  N_RUNS, NS,
         'beta': []
     }
 
-    configs = [{
-      'alpha':0,
-      'beta':0
-    },{
-      'alpha':.3,
-      'beta':.1
-    },{
-      'alpha':.1,
-      'beta':.3
-    },]
-
-    for config in configs:
+    for config in param_configs:
     
         for RUN in range(N_RUNS):
 
-            expdf, error_params = generate_syn_data(
+            X, Y, error_params = generate_syn_data(
                 NS,
                 K,
                 y0_pdf=Y0_PDF,
                 y1_pdf=Y1_PDF,
                 pi_pdf=pi_pdf,
-                alpha=config['alpha'],
-                beta=config['beta'],
+                alpha_0=config['alpha'],
+                alpha_1=config['alpha'],
+                beta_0=config['beta'],
+                beta_1=config['beta'],
                 shuffle=True
             )
-            
+      
             for baseline in baselines:
+                print('======================================================================')
+                print(f"RUN: {RUN}, model: {baseline['model']}, alpha: {config['alpha']}, beta: {config['beta']}")
+                print('====================================================================== \n')
                 target = baseline['target']
-                surrogate_params = {
-                    'alpha': error_params[f'alpha_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None,
-                    'beta': error_params[f'beta_{do}'][0] if baseline['model'] == 'Conditional outcome (SL)' else None
+                loss_config = {
+                    'alpha': config['alpha'] if 'SL' in baseline['model'] else None,
+                    'beta': config['beta'] if 'SL' in baseline['model'] else None,
+                    'prop_func': pi,
+                    'pi_pdf': pi_pdf,
+                    'do': do,
+                    'pd': Y['D'].mean(),
+                    'reweight': True if 'RW' in baseline['model'] else False
                 }
-                results = run_baseline(expdf, baseline, do, surrogate_params, n_epochs=n_epochs, train_ratio=.7)
+
+                results = run_baseline(X, Y, baseline, do, loss_config, n_epochs=n_epochs, train_ratio=.7)
                 exp_results['model'].append(baseline['model'])
                 exp_results['AU-ROC'].append(results['AU-ROC'])
                 exp_results['ACC'].append(results['ACC'])
                 exp_results['alpha'].append(config['alpha'])
                 exp_results['beta'].append(config['beta'])
-                
+
     return exp_results
 
 def run_estimation_error_exp(do, param_configs, error_param, NS, N_RUNS, n_epochs=5, train_ratio=.7):
@@ -331,7 +347,7 @@ def run_estimation_error_exp(do, param_configs, error_param, NS, N_RUNS, n_epoch
             
         for run in range(N_RUNS):
 
-            expdf, error_params = generate_syn_data(
+            X, Y, error_params = generate_syn_data(
                 NS=NS,
                 K=1,
                 y0_pdf=Y0_PDF,
@@ -344,7 +360,7 @@ def run_estimation_error_exp(do, param_configs, error_param, NS, N_RUNS, n_epoch
                 shuffle=True
             )
 
-            run = run_baseline(expdf, baseline, do=0,
+            run = run_baseline(X, Y, baseline, do=0,
                                     surrogate_params=surrogate, n_epochs=n_epochs, train_ratio=.7)
             result = {
                 'AU-ROC': run['AU-ROC'],
@@ -370,7 +386,7 @@ def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
         for RUN in range(N_RUNS):
             py_results[NS][RUN] = {}
 
-            expdf, error_params = generate_syn_data(
+            X, Y, error_params = generate_syn_data(
                 NS=NS,
                 K=K,
                 y0_pdf=Y0_PDF,

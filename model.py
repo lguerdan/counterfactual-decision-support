@@ -8,7 +8,7 @@ class MLP(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = nn.Sequential(
-          nn.Linear(1, 40),
+          nn.Linear(6, 40),
           nn.ReLU(),
           nn.Linear(40, 20),
           nn.ReLU(),
@@ -75,54 +75,32 @@ def evaluate(model, val_loader):
 
     x = torch.cat(feats, dim=0).detach().numpy()
     y = torch.cat(labels, dim=0).detach().numpy()
-    py_hat = torch.cat(preds, dim=0).detach().numpy()
-    
+    py_hat = torch.cat(preds, dim=0).detach().numpy().squeeze()
+
     return x, y, py_hat
 
 def get_loss(py_hat, y, loss_config, weights):
     '''Surrogate loss parameterized by alpha, beta'''
 
-    alpha_d, beta_d = loss_config['alpha'], loss_config['beta']
-
-    if not alpha_d and not beta_d:
-        loss = torch.nn.BCELoss()
-        return loss(py_hat, y) 
-
     loss = torch.nn.BCELoss(reduction='none')
+    alpha, beta = loss_config['alpha'], loss_config['beta']
+    if alpha != None and beta != None:
+        phat_y1 = py_hat[y==1]
+        phat_y0 = py_hat[y==0]
 
-    phat_y1 = py_hat[y==1]
-    phat_y0 = py_hat[y==0]
+        y1_losses = ((1-alpha)*loss(phat_y1, torch.ones_like(phat_y1)) -
+        beta*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta-alpha)
 
-    y1_losses = ((1-alpha_d)*loss(phat_y1, torch.ones_like(phat_y1)) -
-    beta_d*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta_d-alpha_d)
+        y0_losses = ((1-beta)*loss(phat_y0, torch.zeros_like(phat_y0)) -
+        alpha*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta-alpha)
 
-    y0_losses = ((1-beta_d)*loss(phat_y0, torch.zeros_like(phat_y0)) -
-    alpha_d*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta_d-alpha_d)
+        val_loss = torch.cat([y1_losses, y0_losses])
 
-    return torch.cat([y1_losses, y0_losses]).mean()
+    else:
+        val_loss = loss(py_hat, y)
 
-    # loss = torch.nn.BCELoss(reduction='none')
+    if weights != None:
+        val_loss = val_loss*weights
 
-    # alpha, beta = loss_config['alpha'], loss_config['beta']
-
-    # if alpha and beta:
-    #     phat_y1 = py_hat[y==1]
-    #     phat_y0 = py_hat[y==0]
-
-    #     y1_losses = ((1-alpha)*loss(phat_y1, torch.ones_like(phat_y1)) -
-    #     beta*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta-alpha)
-
-    #     y0_losses = ((1-beta)*loss(phat_y0, torch.zeros_like(phat_y0)) -
-    #     alpha*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta-alpha)
-
-    #     val_loss = torch.cat([y1_losses, y0_losses])
-
-    # else:
-    #     val_loss = loss(py_hat, y)
-
-    # if weights != None:
-    #     print('vall loss corrected')
-    #     val_loss = val_loss*weights
-
-    # return val_loss.mean()
+    return val_loss.mean()
 
