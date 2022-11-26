@@ -269,11 +269,15 @@ def get_loaders(X, Y, target, do, conditional, split_frac=.7):
 ######## Parameter estimation
 ###########################################################
 
-def ccpe(X, Y, do, target, n_epochs):
+def ccpe(env, X, Y, do, target, n_epochs):
 
     loss_config = {
         'alpha': None,
-        'beta': None
+        'beta':  None,
+        'prop_func': pi,
+        'pi_pdf': env['PI_PDF'],
+        'do': do,
+        'reweight': False
     }
     
     train_loader, val_loader = get_loaders(X, Y, target, do, conditional=True)
@@ -285,12 +289,7 @@ def ccpe(X, Y, do, target, n_epochs):
     alpha_hat = py_hat.min()
     beta_hat = 1 - py_hat.max()
 
-    debug_info = {
-        'val_x': val_df['X'].to_numpy(),
-        'val_py': py_hat
-    }
-    
-    return alpha_hat, beta_hat, debug_info
+    return alpha_hat, beta_hat
 
 ###########################################################
 ######## Experiments
@@ -413,9 +412,6 @@ def run_baseline_comparison_exp_grid(env, baselines, param_configs, do, N_RUNS, 
                     'pd': Y['D'].mean(),
                     'reweight': True if 'RW' in baseline['model'] else False
                 }
-                print('error params', error_params)
-                print('config alpha', config['alpha'])
-                print('config beta', config['beta'])
 
                 results = run_baseline(X, Y, baseline, do, loss_config, n_epochs=n_epochs, train_ratio=.7)
                 exp_results['model'].append(baseline['model'])
@@ -480,63 +476,48 @@ def run_estimation_error_exp(do, param_configs, error_param, NS, N_RUNS, n_epoch
         
     return results
 
-def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
+def ccpe_benchmark_exp(env, param_configs, SAMPLE_SIZES, N_RUNS, n_epochs):
 
-    exp_results =  []
-    py_results = {}
+    exp_results = {
+        'alpha': [],
+        'beta': [],
+        'alpha_hat': [],
+        'beta_hat': [],
+        'alpha_error': [],
+        'beta_error': [],
+        'NS': []
+    }
 
-    for NS in SAMPLE_SIZES:
-        py_results[NS] = {}
-        for RUN in range(N_RUNS):
-            py_results[NS][RUN] = {}
+    for config in param_configs:
+        for NS in SAMPLE_SIZES:
+            print('======================================================================')
+            print(f"NS: {NS}, alpha: {config['alpha']}, beta: {config['beta']}")
+            print('====================================================================== \n')
+            for RUN in range(N_RUNS):
 
-            X, Y, error_params = generate_syn_data(
-                NS=NS,
-                K=K,
-                y0_pdf=Y0_PDF,
-                y1_pdf=Y1_PDF,
-                pi_pdf=PI_PDF,
-                alpha_min=0.05,
-                alpha_max=0.2499,
-                beta_min=0.05,
-                beta_max=0.2499
-            )
-            expdf = expdf.sample(frac=1).reset_index(drop=True)
+                X, Y, error_params = generate_syn_data(
+                    NS=NS,
+                    K=1,
+                    y0_pdf=env['Y0_PDF'],
+                    y1_pdf=env['Y1_PDF'],
+                    pi_pdf=env['PI_PDF'],
+                    alpha_0=config['alpha'],
+                    alpha_1=config['alpha'],
+                    beta_0=config['beta'],
+                    beta_1=config['beta'],
+                )
 
-            result = error_params.copy()
-            result['NS'] = expdf.shape[0]
-            result['alpha_hat'] = np.zeros((2, K))
-            result['beta_hat'] = np.zeros((2, K))
-            result['alpha_error'] = np.zeros((2, K))
-            result['beta_error'] = np.zeros((2, K))
+                alpha_hat, beta_hat = ccpe(env, X, Y, target=f'Y0', do=0, n_epochs=n_epochs)
+                
+                exp_results['alpha'].append(config['alpha'])
+                exp_results['beta'].append(config['beta'])
+                exp_results['alpha_hat'].append(alpha_hat)
+                exp_results['beta_hat'].append(beta_hat)
+                exp_results['alpha_error'].append(alpha_hat - config['alpha'])
+                exp_results['beta_error'].append(beta_hat - config['beta'])
+                exp_results['NS'].append(NS)
 
-            for k in range(K):
-                py_results[NS][RUN][k] = {}
-                for d in [0]:
-                    py_results[NS][RUN][k][d] = {}
-                    alpha_hat, beta_hat, val_preds = ccpe(X, Y, target=f'Y{k}', do=d, n_epochs=n_epochs)
-                    result['alpha_hat'][d][k] = alpha_hat
-                    result['beta_hat'][d][k] = beta_hat
-
-                    py_results[NS][RUN][k][d]['x'] = val_preds['val_x']
-                    py_results[NS][RUN][k][d]['py'] = val_preds['val_py']
-                    result['alpha_error'][d][k] = result['alpha_hat'][d][k] - error_params[f'alpha_{d}'][k]
-                    result['beta_error'][d][k] = result['beta_hat'][d][k] - error_params[f'beta_{d}'][k]
-
-            # Mean aggregation approach (not included in writeup)
-            eta_0_bar = np.array([py_results[NS][RUN][k][0]['py'] for k in range(K)]).mean(axis=0).squeeze()
-            alpha_0_bar_hat = eta_0_bar.min()
-            beta_0_bar_hat = 1-eta_0_bar.max()
-
-            py_results[NS][RUN]['eta_0_bar'] = eta_0_bar
-            result['alpha_0_bar_hat'] = alpha_0_bar_hat
-            result['beta_0_bar_hat'] = beta_0_bar_hat
-            result['alpha_0_bar_error'] = alpha_0_bar_hat - error_params[f'alpha_0'].mean()
-            result['beta_0_bar_error'] = beta_0_bar_hat - error_params[f'beta_0'].mean()
-
-            exp_results.append(result)
-    
-    return exp_results, py_results
+    return exp_results
 
 def get_ccpe_result_df(do, exp_results):
     full_exp_results = []
