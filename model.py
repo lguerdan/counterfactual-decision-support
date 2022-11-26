@@ -93,7 +93,6 @@ def get_loss(py_hat, y, loss_config, weights):
 
         y0_losses = ((1-beta)*loss(phat_y0, torch.zeros_like(phat_y0)) -
         alpha*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta-alpha)
-
         val_loss = torch.cat([y1_losses, y0_losses])
 
     else:

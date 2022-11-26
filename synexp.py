@@ -24,18 +24,30 @@ def pi(x, func):
         return .35 * x + .5
 
     elif func=='6cov_linear':
-        return .7*x.mean(axis=1)
-        
+        return .6*x.mean(axis=1) +.1
+    
+    elif func=='6cov_linsep':
+        return .4*(1-np.abs(x[:,0]-x[:,1])) + .3
 
 def eta(x, environment):
     
     if environment=='shalt_6cov_baseline':
-        return (1/3.35054) * np.sin(x[:,4])*((4*np.power(np.maximum(x[:,0], x[:,5]), 3))/(1+2*np.power(x[:,2], 2)))
-    
-    if environment=='shalt_6cov_intervention':
-        return x.mean(axis=1)
+        return .8* (.25 *(1+np.sin(1.5*x[:,0]))*(1-np.cos(3.9*np.maximum(.85*x[:,2],.7*x[:,3])))) + .2 * (4*np.power((x[:,1]-.5), 2))
 
-    if environment=='sinusoid':
+    elif environment=='shalt_6cov_intervention':
+        return 1-np.power(x[:,0], 6)
+
+    elif environment=='2D_linsep_intervention':
+        y = np.zeros(x.shape[0])
+        y[x[:,1] > (-x[:,0] + 1)] = 1
+        return y
+
+    elif environment=='2D_linsep_baseline':
+        y = np.zeros(x.shape[0])
+        y[x[:,1] > x[:,0]] = 1
+        return y
+
+    elif environment=='sinusoid':
         return .5 + .5 * np.sin(2.9*x + .1)
 
     elif environment=='piecewise_sinusoid':
@@ -60,6 +72,92 @@ def eta(x, environment):
              lambda v: 1.4*v+.7,
              lambda v: -1.5*v+1.3,
              lambda v: 1.25*v - .9 ])
+
+
+def generate_syn_data_pdfviz(
+    NS,
+    eta0,
+    eta1,
+    pi_pdf=PI_PDF,
+    alpha_0=0,
+    alpha_1=0,
+    beta_0=0,
+    beta_1=0,
+    shuffle=True
+):
+
+    K=1
+    alpha_0_arr = alpha_0*np.ones(K)
+    alpha_1_arr = alpha_1*np.ones(K)
+    beta_0_arr = beta_0*np.ones(K)
+    beta_1_arr = beta_1*np.ones(K)
+
+    # Define class probability functions
+    x = np.random.uniform(low=0, high=1, size=(NS, 6))
+    eta_star_0 = eta0(x)
+    eta_star_1 = eta1(x)
+
+    # Sample from target potential outcome class probability distributions
+    YS_0 = np.random.binomial(1, eta_star_0, size=NS)
+    YS_1 = np.random.binomial(1, eta_star_1, size=NS)
+
+    Y_0 = np.matlib.repmat(YS_0, K, 1).T
+    Y_1 = np.matlib.repmat(YS_1, K, 1).T
+
+    alpha_0_errors = np.array([np.random.binomial(1, alpha_0_arr[i], size=NS) for i in range(K)]).T
+    alpha_1_errors = np.array([np.random.binomial(1, alpha_1_arr[i], size=NS) for i in range(K)]).T
+
+    beta_0_errors = np.array([np.random.binomial(1, beta_0_arr[i], size=NS) for i in range(K)]).T
+    beta_1_errors = np.array([np.random.binomial(1, beta_1_arr[i], size=NS) for i in range(K)]).T
+
+    Y_0[alpha_0_errors == 1] = 1
+    Y_0[beta_0_errors == 1] = 0
+
+    Y_1[alpha_1_errors == 1] = 1
+    Y_1[beta_1_errors == 1] = 0
+
+    # Apply consistency assumption to observe potential outcomes
+    YS = np.zeros(NS, dtype=np.int64)
+    Y = np.zeros_like(Y_0)
+
+    pD = pi(x, func=pi_pdf)
+    D = np.random.binomial(1, pi(x, func=pi_pdf), size=NS)
+    YS[D==0] = YS_0[D==0]
+    YS[D==1] = YS_1[D==1]
+
+    Y[D==0,:] = Y_0[D==0,:]
+    Y[D==1,:] = Y_1[D==1,:]
+        
+    dataset_y = {
+        'pYS_0': eta_star_0,
+        'pYS_1': eta_star_1,
+        'YS_0': YS_0,
+        'YS_1': YS_1,
+        'pD': pD,
+        'D': D,
+        'YS': YS
+    }
+
+    for yx in range(Y.shape[1]):
+        dataset_y[f'Y{yx}'] = Y[:,yx]
+        dataset_y[f'Y{yx}_0'] = Y_0[:,yx]
+        dataset_y[f'Y{yx}_1'] = Y_1[:,yx]
+
+    error_params = {
+        'alpha_0': alpha_0_arr,
+        'alpha_1': alpha_1_arr,
+        'beta_0': beta_0_arr,
+        'beta_1': beta_1_arr
+    }
+
+    X, Y = pd.DataFrame(x), pd.DataFrame(dataset_y)
+   
+    if shuffle: 
+        suffle_ix = permutation(X.index)
+        X = X.iloc[suffle_ix]
+        Y = Y.iloc[suffle_ix]
+
+    return X, Y, error_params
 
 def generate_syn_data(
     NS,
@@ -107,6 +205,7 @@ def generate_syn_data(
     YS = np.zeros(NS, dtype=np.int64)
     Y = np.zeros_like(Y_0)
 
+    pD = pi(x, func=pi_pdf)
     D = np.random.binomial(1, pi(x, func=pi_pdf), size=NS)
     YS[D==0] = YS_0[D==0]
     YS[D==1] = YS_1[D==1]
@@ -115,8 +214,11 @@ def generate_syn_data(
     Y[D==1,:] = Y_1[D==1,:]
         
     dataset_y = {
+        'pYS_0': eta_star_0,
+        'pYS_1': eta_star_1,
         'YS_0': YS_0,
         'YS_1': YS_1,
+        'pD': pD,
         'D': D,
         'YS': YS
     }
@@ -144,21 +246,21 @@ def generate_syn_data(
 
 def get_loaders(X, Y, target, do, conditional, split_frac=.7):
 
-    
-    if conditional:
-        X = X[Y['D'] == do]
-        Y = Y[Y['D'] == do]
-
     split_ix = int(X.shape[0]*split_frac)
     
-    X_train = torch.Tensor(X[:split_ix].to_numpy())
-    Y_train = torch.Tensor(Y[:split_ix][target].to_numpy())[:, None]
-    X_val = torch.Tensor(X[split_ix:].to_numpy())
-    Y_val = torch.Tensor(Y[split_ix:][f'YS_{do}'].to_numpy())[:, None]
+    X_train = X[:split_ix].to_numpy()
+    Y_train = Y[:split_ix][target].to_numpy()[:, None]
+
+    if conditional:
+        X_train = X_train[Y[:split_ix]['D'] == do]
+        Y_train = Y_train[Y[:split_ix]['D'] == do]
+
+    X_val = X[split_ix:].to_numpy()
+    Y_val = Y[split_ix:][f'YS_{do}'].to_numpy()[:, None]
     
-    train_data = torch.utils.data.TensorDataset(X_train, Y_train)
+    train_data = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.Tensor(Y_train))
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)
-    val_data = torch.utils.data.TensorDataset(X_val, Y_val)
+    val_data = torch.utils.data.TensorDataset(torch.Tensor(X_val), torch.Tensor(Y_val))
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=32, shuffle=False, num_workers=1)
     
     return train_loader, val_loader
@@ -167,7 +269,7 @@ def get_loaders(X, Y, target, do, conditional, split_frac=.7):
 ######## Parameter estimation
 ###########################################################
 
-def ccpe(expdf, do, target, n_epochs):
+def ccpe(X, Y, do, target, n_epochs):
 
     loss_config = {
         'alpha': None,
@@ -221,8 +323,7 @@ def run_baseline(X, Y, baseline, do, loss_config, n_epochs=5, train_ratio=.7):
 
     return results
 
-def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
-    pi_pdf='linear',K=1, n_epochs=5, alpha=0, beta=0):
+def run_baseline_comparison_exp(env, baselines, do,  N_RUNS, NS, K=1, n_epochs=5, alpha=0, beta=0):
 
     exp_results = {
         'model': [],
@@ -238,9 +339,9 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
         X, Y, error_params = generate_syn_data(
             NS,
             K,
-            y0_pdf=Y0_PDF,
-            y1_pdf=Y1_PDF,
-            pi_pdf=pi_pdf,
+            y0_pdf=env['Y0_PDF'],
+            y1_pdf=env['Y1_PDF'],
+            pi_pdf=env['PI_PDF'],
             alpha_0=alpha,
             alpha_1=alpha,
             beta_0=beta,
@@ -255,7 +356,7 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
                 'alpha': error_params[f'alpha_{do}'][0] if 'SL' in baseline['model'] else None,
                 'beta': error_params[f'beta_{do}'][0] if 'SL' in baseline['model'] else None,
                 'prop_func': pi,
-                'pi_pdf': pi_pdf,
+                'pi_pdf': env['PI_PDF'],
                 'do': do,
                 'pd': Y['D'].mean(),
                 'reweight': True if 'RW' in baseline['model'] else False
@@ -271,7 +372,7 @@ def run_baseline_comparison_exp(baselines, do,  N_RUNS, NS,
     return exp_results
 
 
-def run_baseline_comparison_exp_grid(baselines, param_configs, do, N_RUNS, NS, pi_pdf='linear', K=1, n_epochs=5):
+def run_baseline_comparison_exp_grid(env, baselines, param_configs, do, N_RUNS, NS, K=1, n_epochs=5):
 
     exp_results = {
         'model': [],
@@ -288,9 +389,9 @@ def run_baseline_comparison_exp_grid(baselines, param_configs, do, N_RUNS, NS, p
             X, Y, error_params = generate_syn_data(
                 NS,
                 K,
-                y0_pdf=Y0_PDF,
-                y1_pdf=Y1_PDF,
-                pi_pdf=pi_pdf,
+                y0_pdf=env['Y0_PDF'],
+                y1_pdf=env['Y1_PDF'],
+                pi_pdf=env['PI_PDF'],
                 alpha_0=config['alpha'],
                 alpha_1=config['alpha'],
                 beta_0=config['beta'],
@@ -307,11 +408,14 @@ def run_baseline_comparison_exp_grid(baselines, param_configs, do, N_RUNS, NS, p
                     'alpha': config['alpha'] if 'SL' in baseline['model'] else None,
                     'beta': config['beta'] if 'SL' in baseline['model'] else None,
                     'prop_func': pi,
-                    'pi_pdf': pi_pdf,
+                    'pi_pdf': env['PI_PDF'],
                     'do': do,
                     'pd': Y['D'].mean(),
                     'reweight': True if 'RW' in baseline['model'] else False
                 }
+                print('error params', error_params)
+                print('config alpha', config['alpha'])
+                print('config beta', config['beta'])
 
                 results = run_baseline(X, Y, baseline, do, loss_config, n_epochs=n_epochs, train_ratio=.7)
                 exp_results['model'].append(baseline['model'])
@@ -410,7 +514,7 @@ def ccpe_benchmark_exp(SAMPLE_SIZES, N_RUNS, K, n_epochs):
                 py_results[NS][RUN][k] = {}
                 for d in [0]:
                     py_results[NS][RUN][k][d] = {}
-                    alpha_hat, beta_hat, val_preds = ccpe(expdf, target=f'Y{k}', do=d, n_epochs=n_epochs)
+                    alpha_hat, beta_hat, val_preds = ccpe(X, Y, target=f'Y{k}', do=d, n_epochs=n_epochs)
                     result['alpha_hat'][d][k] = alpha_hat
                     result['beta_hat'][d][k] = beta_hat
 
