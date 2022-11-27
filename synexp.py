@@ -27,7 +27,7 @@ def pi(x, func):
         return .6*x.mean(axis=1) +.1
     
     elif func=='6cov_linsep':
-        return .4*(1-np.abs(x[:,0]-x[:,1])) + .3
+        return .3*(1-np.abs(x[:,0]-x[:,1])) + .2
 
 def eta(x, environment):
     
@@ -491,7 +491,7 @@ def ccpe_benchmark_exp(env, param_configs, SAMPLE_SIZES, N_RUNS, n_epochs):
     for config in param_configs:
         for NS in SAMPLE_SIZES:
             print('======================================================================')
-            print(f"NS: {NS}, alpha: {config['alpha']}, beta: {config['beta']}")
+            print(f"NS: {SAMPLE_SIZES}, alpha: {config['alpha']}, beta: {config['beta']}")
             print('====================================================================== \n')
             for RUN in range(N_RUNS):
 
