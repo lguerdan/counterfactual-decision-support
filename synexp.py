@@ -178,7 +178,7 @@ def generate_syn_data(
     beta_1_arr = beta_1*np.ones(K)
 
     # Define class probability functions
-    x = np.random.uniform(low=0, high=1, size=(NS, 6))
+    x = np.random.uniform(low=-1, high=1, size=NS)
     eta_star_0 = eta(x, environment=y0_pdf)
     eta_star_1 = eta(x, environment=y1_pdf)
 
