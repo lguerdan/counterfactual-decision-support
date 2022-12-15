@@ -5,10 +5,10 @@ from tqdm import tqdm
 from torch import nn
 
 class MLP(nn.Module):
-    def __init__(self):
+    def __init__(self, n_feats):
         super().__init__()
         self.layers = nn.Sequential(
-          nn.Linear(1, 40),
+          nn.Linear(n_feats, 40),
           nn.ReLU(),
           nn.Linear(40, 20),
           nn.ReLU(),
@@ -21,36 +21,29 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
-def get_prop_weights(x, loss_config):
+def get_prop_weights(x, pd, loss_config):
 
     if not loss_config['reweight']:
         return None
 
-    prop_func = loss_config['prop_func']
     do = loss_config['do']
-    pd = loss_config['pd']
-    pi_pdf = loss_config['pi_pdf']
-
-    # Assuming access to ''perfect'' weights
-    pdx = prop_func(x, func=pi_pdf)
-
-    weights = pd/(((2*do-1)*pdx) + (1-do))
+    weights = pd/(((2*do-1)*pd) + (1-do))
 
     return weights
 
 def train(model, target, train_loader, loss_config, n_epochs):
     
-    opt = optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
+    opt = optim.Adam(model.parameters(), lr=.001)
     epoch_loss = []
 
     for epoch in tqdm(range(0, n_epochs), desc=f"Target: {target}"):
         current_loss = 0.0
         for i, data in enumerate(train_loader, 0):
-            x, y = data
-            weights = get_prop_weights(x, loss_config)
+            x, y, pd, _ = data
+            balancing_weights = get_prop_weights(x, pd, loss_config)
             opt.zero_grad()
             outputs = model(x)
-            loss = get_loss(outputs, y, loss_config, weights)
+            loss = get_loss(outputs, y, loss_config, weights=balancing_weights)
             loss.backward()
             opt.step()
             current_loss += loss.item()
@@ -60,24 +53,27 @@ def train(model, target, train_loader, loss_config, n_epochs):
         
     return epoch_loss
 
-def evaluate(model, val_loader):
+def evaluate(model, data_loader):
 
     labels = []
     preds = []
     feats = []
+    treatments = []
     
-    for i, data in enumerate(val_loader, 0):
-        inputs, targets = data
-        outputs = model(inputs)
+    for i, data in enumerate(data_loader, 0):
+        x, y, _, d = data
+        outputs = model(x)
         preds.append(outputs)
-        labels.append(targets)
-        feats.append(inputs)
+        labels.append(y)
+        feats.append(x)
+        treatments.append(d)
 
     x = torch.cat(feats, dim=0).detach().numpy()
     y = torch.cat(labels, dim=0).detach().numpy()
     py_hat = torch.cat(preds, dim=0).detach().numpy().squeeze()
+    d = torch.cat(treatments, dim=0).detach().numpy().squeeze()
 
-    return x, y, py_hat
+    return x, y, py_hat, d
 
 def get_loss(py_hat, y, loss_config, weights):
     '''Surrogate loss parameterized by alpha, beta'''

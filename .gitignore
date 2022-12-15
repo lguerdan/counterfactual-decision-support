@@ -4,3 +4,7 @@ runs/*
 .DS_Store
 *.pyc
 results/*
+*.pdf
+*.csv
+*.dta
+*.png
