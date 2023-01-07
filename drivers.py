@@ -204,81 +204,61 @@ def run_baseline_one_sided(dataset, baseline, do, loss_config, n_epochs=5):
 ######## Parameter estimation
 ###########################################################
 
-def ccpe(env, X, Y, do, target, n_epochs):
+def ccpe(exp_config, dataset, do, n_epochs):
 
     loss_config = {
         'alpha': None,
         'beta':  None,
-        'prop_func': pi,
-        'pi_pdf': env['PI_PDF'],
+        'pi_pdf': exp_config['benchmark']['config']['PI_PDF'],
         'do': do,
         'reweight': False
     }
-    
-    train_loader, val_loader = get_loaders(X, Y, target, do, conditional=True)
-    model = MLP(n_feats=X.shape[1])
-    losses = train(model, 'Y|D', train_loader, loss_config=loss_config, n_epochs=n_epochs)
-    x, y, py_hat = evaluate(model, val_loader)
+
+    baseline = {
+        'model': 'COM',
+        'target': 'Y'
+    }
+
+    metrics, py_hat = run_baseline_one_sided(dataset, baseline, do, loss_config, n_epochs)
     
     # Compute error parameters from predicted probabilities
-    alpha_hat = py_hat.min()
-    beta_hat = 1 - py_hat.max()
+    alpha_hat = np.quantile(py_hat, .01)
+    beta_hat = 1 - np.quantile(py_hat, .99)
 
     return alpha_hat, beta_hat
 
-def run_estimation_error_exp(do, param_configs, error_param, NS, N_RUNS, n_epochs=5, train_ratio=.7):
+def run_ccpe_exp(exp_config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epochs=5, train_ratio=.7):
     
-    baseline = {
-        'model': 'Conditional outcome (SL)',
-        'target': 'Y0'
-    }
-
     results = []
-    for config in param_configs:
-        surrogate = {}
+    for error_params in error_param_configs:
+        for NS in sample_sizes:
 
-        if error_param == 'alpha':
-            alpha = config['param']
-            surrogate['alpha'] = config['estimate']
-            beta = 0
-            surrogate['beta'] = 0
+            exp_config['benchmark']['NS'] = NS
 
-        if error_param == 'beta':
-            beta = config['param']
-            surrogate['beta'] = config['estimate']
-            alpha = 0
-            surrogate['alpha'] = 0
-            
-        for run in range(N_RUNS):
+            for RUN in range(N_RUNS):
+                X, Y = load_dataset(exp_config['benchmark'], error_params)
+                split_ix = int(X.shape[0]*train_ratio)
 
-            X, Y, error_params = generate_syn_data(
-                NS=NS,
-                K=1,
-                y0_pdf=Y0_PDF,
-                y1_pdf=Y1_PDF,
-                pi_pdf=PI_PDF,
-                alpha_min=alpha,
-                alpha_max=alpha+.001,
-                beta_min=beta,
-                beta_max=beta+.001,
-                shuffle=True
-            )
+                dataset = {
+                    'X_train': X[:split_ix],
+                    'Y_train': Y[:split_ix],
+                    'X_test': X[split_ix:],
+                    'Y_test': Y[split_ix:]
+                }
 
-            run = run_baseline(X, Y, baseline, do=0,
-                                    surrogate_params=surrogate, n_epochs=n_epochs, train_ratio=.7)
-            result = {
-                'AU-ROC': run['AU-ROC'],
-                'ACC': run['ACC'],
-                'alpha': alpha,
-                'beta': beta, 
-                'alpha_hat': surrogate['alpha'],
-                'beta_hat': surrogate['beta'],
-                'error_param': error_param
-            }
+                alpha_hat, beta_hat = ccpe(exp_config, dataset, do, n_epochs)
 
-            results.append(result)
+                results.append({
+                    'NS': NS,
+                    'alpha': error_params[f'alpha_{do}'],
+                    'beta': error_params[f'beta_{do}'],
+                    'alpha_hat': alpha_hat,
+                    'beta_hat': beta_hat,
+                    'alpha_error': error_params[f'alpha_{do}'] - alpha_hat,
+                    'beta_error': error_params[f'beta_{do}'] - beta_hat
+                })
         
-    return results
+    return pd.DataFrame(results)
 
 def ccpe_benchmark_exp(env, param_configs, SAMPLE_SIZES, N_RUNS, n_epochs):
 

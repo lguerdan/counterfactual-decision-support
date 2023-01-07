@@ -5,6 +5,6 @@ runs/*
 *.pyc
 results/*
 *.pdf
-*.csv
+.csv
 *.dta
 *.png

@@ -121,7 +121,6 @@ def generate_syn_data(env, error_params, shuffle=True):
     X, Y = pd.DataFrame(x), pd.DataFrame(dataset_y)
    
     if shuffle: 
-        print('shuffle shuffle shuffle')
         suffle_ix = permutation(X.index)
         X = X.iloc[suffle_ix]
         Y = Y.iloc[suffle_ix]
