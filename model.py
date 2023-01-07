@@ -3,6 +3,8 @@ import torch
 import torch.optim as optim
 from tqdm import tqdm
 from torch import nn
+import numpy as np
+from sklearn.metrics import roc_auc_score
 
 class MLP(nn.Module):
     def __init__(self, n_feats):
@@ -53,27 +55,30 @@ def train(model, target, train_loader, loss_config, n_epochs):
         
     return epoch_loss
 
-def evaluate(model, data_loader):
+def evaluate(model, loader):
 
-    labels = []
     preds = []
-    feats = []
-    treatments = []
+    labels = []
     
-    for i, data in enumerate(data_loader, 0):
-        x, y, _, d = data
+    for i, data in enumerate(loader, 0):
+        x, y, _, _ = data
         outputs = model(x)
         preds.append(outputs)
         labels.append(y)
-        feats.append(x)
-        treatments.append(d)
 
-    x = torch.cat(feats, dim=0).detach().numpy()
-    y = torch.cat(labels, dim=0).detach().numpy()
+    # Compute potential outcome classification metrics
     py_hat = torch.cat(preds, dim=0).detach().numpy().squeeze()
-    d = torch.cat(treatments, dim=0).detach().numpy().squeeze()
+    y = torch.cat(labels, dim=0).detach().numpy()
+    y_hat = np.zeros_like(y)
+    y_hat[py_hat > .5] = 1
 
-    return x, y, py_hat, d
+    metrics = {
+        'AU-ROC': roc_auc_score(y, py_hat),
+        'ACC': (y_hat == y).mean()
+    }
+
+    return metrics, py_hat
+
 
 def get_loss(py_hat, y, loss_config, weights):
     '''Surrogate loss parameterized by alpha, beta'''
