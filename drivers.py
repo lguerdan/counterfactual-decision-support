@@ -11,7 +11,7 @@ import ccpe, erm, model
 ######## Risk minimmization experiments
 ###########################################################
 
-def run_risk_minimization_exp(config, baselines, param_configs):
+def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
 
     te_results = []
     po_results = []
@@ -27,7 +27,11 @@ def run_risk_minimization_exp(config, baselines, param_configs):
             te_results.extend(te_baseline_metrics)
             po_results.extend(po_baseline_metrics)
 
-    return pd.DataFrame(po_results), pd.DataFrame(te_results)
+    po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
+    po_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.NS}_PO.csv')
+    te_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.NS}_TE.csv')
+
+    return po_df, te_df
 
   
 ###########################################################
@@ -64,5 +68,8 @@ def run_ccpe_exp(config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epoc
                     'alpha_error': error_params[f'alpha_{do}'] - alpha_hat,
                     'beta_error': error_params[f'beta_{do}'] - beta_hat
                 })
+
+    ccpe_results = pd.DataFrame(results)
+    ccpe_results.to_csv(f'{config.log_dir}/parameter_estimation_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}.csv')
         
-    return pd.DataFrame(results)
+    return ccpe_results
