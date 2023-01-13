@@ -43,8 +43,9 @@ def generate_ohie_data(OHIE_PATH, error_params, shuffle=True):
         'Y_1': Y_1,
         'Y': Y,
         'pD': np.ones_like(D) * D.mean(),
+        'pD_hat': np.ones_like(D) * D.mean(),
         'D': D,
-        'E': np.ones_like(YS) # Include for computign the ATT on JOBS test data
+        'E': np.ones_like(YS) # Include for computing the ATT on JOBS test data
     }
 
     X, Y = pd.DataFrame(ohie_df), pd.DataFrame(dataset_y)

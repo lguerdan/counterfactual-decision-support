@@ -23,36 +23,30 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
-def get_prop_weights(x, pd, loss_config):
+def get_sample_weights(x, pd, loss_config, propensity_model):
+    pd_hat = propensity_model(x) if propensity_model else pd
+    return (1-loss_config.d_mean)/(1-pd_hat) if loss_config.do == 0 else loss_config.d_mean/pd_hat
 
-    if not loss_config['reweight']:
-        return None
-
-    do = loss_config['do']
-    weights = pd/(((2*do-1)*pd) + (1-do))
-
-    return weights
-
-def train(model, target, train_loader, loss_config, n_epochs):
+def train(model, train_loader, loss_config, n_epochs, desc, propensity_model=None):
     
     opt = optim.Adam(model.parameters(), lr=.001)
     epoch_loss = []
 
-    for epoch in tqdm(range(0, n_epochs), desc=f"Target: {target}"):
+    for epoch in tqdm(range(0, n_epochs), desc=desc):
         current_loss = 0.0
         for i, data in enumerate(train_loader, 0):
-            x, y, pd, _ = data
-            balancing_weights = get_prop_weights(x, pd, loss_config)
             opt.zero_grad()
-            outputs = model(x)
-            loss = get_loss(outputs, y, loss_config, weights=balancing_weights)
+            x, y, pd, _ = data
+            y_hat = model(x)
+            balancing_weights = get_sample_weights(x, pd, loss_config, propensity_model) if loss_config.reweight else None
+            loss = get_loss(y_hat, y, loss_config, weights=balancing_weights)
             loss.backward()
             opt.step()
             current_loss += loss.item()
-        
+
         epoch_loss.append(current_loss)
         current_loss = 0.0
-        
+
     return epoch_loss
 
 def evaluate(model, loader):
@@ -89,12 +83,17 @@ def get_loss(py_hat, y, loss_config, weights):
         phat_y1 = py_hat[y==1]
         phat_y0 = py_hat[y==0]
 
-        y1_losses = ((1-alpha)*loss(phat_y1, torch.ones_like(phat_y1)) -
-        beta*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta-alpha)
+        try:
+            y1_losses = ((1-alpha)*loss(phat_y1, torch.ones_like(phat_y1)) -
+            beta*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta-alpha)
 
-        y0_losses = ((1-beta)*loss(phat_y0, torch.zeros_like(phat_y0)) -
-        alpha*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta-alpha)
-        val_loss = torch.cat([y1_losses, y0_losses])
+            y0_losses = ((1-beta)*loss(phat_y0, torch.zeros_like(phat_y0)) -
+            alpha*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta-alpha)
+            val_loss = torch.cat([y1_losses, y0_losses])
+        
+        except:
+            print(f'phat_y1 min: {phat_y1.min()}, phat_y1 max: {phat_y1.max()}')
+            print(f'phat_y0 min: {phat_y0.min()}, phat_y0 max: {phat_y0.max()}')
 
     else:
         val_loss = loss(py_hat, y)
@@ -103,4 +102,3 @@ def get_loss(py_hat, y, loss_config, weights):
         val_loss = val_loss*weights
 
     return val_loss.mean()
-

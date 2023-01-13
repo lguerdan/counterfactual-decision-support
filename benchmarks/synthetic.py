@@ -60,7 +60,7 @@ def eta(x, environment):
              lambda v: 1.25*v - .9 ])
 
 def generate_syn_data(env, error_params, shuffle=True):  
-
+    
     NS = env['NS']
 
     if env['name'] == 'synthetic_1D_sinusoidal':
@@ -82,15 +82,15 @@ def generate_syn_data(env, error_params, shuffle=True):
     Y_0 = YS_0.copy()
     Y_1 = YS_1.copy()
 
-    alpha_0_errors = np.random.binomial(1, error_params['alpha_0'], size=NS)
-    alpha_1_errors = np.random.binomial(1, error_params['alpha_1'], size=NS)
-    beta_0_errors = np.random.binomial(1, error_params['beta_0'], size=NS)
-    beta_1_errors = np.random.binomial(1, error_params['beta_1'], size=NS)
+    alpha_0_errors = ((Y_0 == 0) & np.random.binomial(1, error_params['alpha_0'], size=NS))
+    alpha_1_errors = ((Y_1 == 0) & np.random.binomial(1, error_params['alpha_1'], size=NS))
+    beta_0_errors = ((Y_0 == 1) & np.random.binomial(1, error_params['beta_0'], size=NS))
+    beta_1_errors = ((Y_1 == 1) & np.random.binomial(1, error_params['beta_1'], size=NS))
 
-    Y_0[(Y_0 == 0) & (alpha_0_errors == 1)] = 1
-    Y_0[(Y_0 == 1) & (beta_0_errors == 1)] = 0
-    Y_1[(Y_1 == 0) & (alpha_1_errors == 1)] = 1
-    Y_1[(Y_1 == 1) & (beta_1_errors == 1)] = 0
+    Y_0[alpha_0_errors == 1] = 1
+    Y_0[beta_0_errors == 1] = 0
+    Y_1[alpha_1_errors == 1] = 1
+    Y_1[beta_1_errors == 1] = 0
 
     # Apply consistency assumption to observe potential outcomes
     YS = np.zeros(NS, dtype=np.int64)
@@ -113,6 +113,7 @@ def generate_syn_data(env, error_params, shuffle=True):
         'Y_1': Y_1,
         'Y': Y,
         'pD': pD,
+        'pD_hat': pD,
         'D': D,
         'YS': YS,
         'E': np.ones_like(YS) # Include for computign the ATT on JOBS test data

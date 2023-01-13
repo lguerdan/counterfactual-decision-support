@@ -4,6 +4,7 @@ import pandas as pd
 import numpy.matlib
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import roc_auc_score
+from attrdict import AttrDict
 
 from model import *
 from benchmarks import synthetic, ohie, jobs
@@ -12,6 +13,39 @@ from benchmarks import synthetic, ohie, jobs
 ###########################################################
 ######## Utils and data loaders
 ###########################################################
+
+def compute_crossfit_metrics(crossfit_erm_preds, Y_test, n_splits, config, log_metadata):
+    
+    te_metrics = []
+    po_metrics = []
+    
+    for baseline_name, results in crossfit_erm_preds.items():
+
+        po_preds = {}
+        for do in exp_config.target_POs:
+
+            y = Y_test[f'YS_{do}']
+            po_preds[do] = np.zeros_like(y)
+            
+            # Compute aggregate model prediction on evaluation fold
+            for split in range(n_splits): 
+                po_preds[do] = np.add(po_preds[do], (1/n_splits)*results[split][do])
+
+                po_result = {
+                    'AU-ROC': roc_auc_score(y, po_preds[do]),
+                    'ACC': (po_preds[do] == y).mean(),
+                    'do': do,
+                    'baseline': baseline_name
+                }
+
+            po_metrics.append({**log_metadata, **po_result})
+
+        if len(exp_config.target_POs) == 2:
+            te_result = compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0)
+            te_metrics.append({**log_metadata, **te_result, 'baseline': baseline_name })
+            
+    return te_metrics, po_metrics
+
 
 def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
 
@@ -60,9 +94,52 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
     
     return treatment_effect_metrics
 
-def load_dataset(benchmark_config, error_params):
-    # This is a good place to experimentally manipulate selection bias
-    # Based on a configurable parameter (or algorithmic)
+
+
+############# TODO in this function ##############
+## Move code below to data_loaders.py
+##################################################
+
+def get_splits(X_train, X_test, Y_train, Y_test, config):
+    
+    N_train = X_train.shape[0]
+    
+    if not config.split_erm:
+        dataset = AttrDict({
+            'X_train': X_train,
+            'X_test': X_test,
+            'Y_train': Y_train,
+            'Y_test': Y_test
+        })
+        return [dataset.deepcopy(), dataset.deepcopy(), dataset.deepcopy()]
+    
+    else:
+        split_ix_1, split_ix_2 = int(.33*N_train), int(.66*N_train)
+
+        split1 = AttrDict({
+            'X_train': X_train.iloc[:split_ix_1, :],
+            'X_test': X_test,
+            'Y_train': Y_train.iloc[:split_ix_1, :],
+            'Y_test': Y_test
+        })
+
+        split2 = AttrDict({
+            'X_train': X_train.iloc[split_ix_1:split_ix_2, :],
+            'X_test': X_test,
+            'Y_train': Y_train.iloc[split_ix_1:split_ix_2, :],
+            'Y_test': Y_test
+        })
+
+        split3 = AttrDict({
+            'X_train': X_train.iloc[split_ix_2:, :],
+            'X_test': X_test,
+            'Y_train': Y_train.iloc[split_ix_2:, :],
+            'Y_test': Y_test
+        })
+        
+        return [split1, split2, split3]
+
+def load_benchmark(benchmark_config, error_params):
 
     if 'synthetic' in benchmark_config['name']:
         X, Y = synthetic.generate_syn_data(benchmark_config, error_params)
@@ -72,8 +149,9 @@ def load_dataset(benchmark_config, error_params):
 
     elif benchmark_config['name'] == 'jobs':
         X, Y = jobs.generate_jobs_data(benchmark_config, error_params)
-
-    return X, Y
+    
+    split_ix = int(X.shape[0]*.7)
+    return X[:split_ix], X[split_ix:], Y[:split_ix], Y[split_ix:]
 
 
 def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
@@ -81,6 +159,8 @@ def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
     if conditional:
         X_train = X_train[YCF_train['D']==do]
         YCF_train = YCF_train[YCF_train['D']==do]
+
+    eval_target = 'D' if target == 'D' else f'YS_{do}'
     
     X_train = X_train.to_numpy()
     Y_train = YCF_train[target].to_numpy()[:, None]
@@ -88,7 +168,7 @@ def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
     D_train = YCF_train['D'].to_numpy()[:, None]
 
     X_test = X_test.to_numpy()
-    Y_test = YCF_test[f'YS_{do}'].to_numpy()[:, None]
+    Y_test = YCF_test[eval_target].to_numpy()[:, None]
     pD_test = YCF_test['pD'].to_numpy()[:, None]
     D_test = YCF_test['D'].to_numpy()[:, None]
     
@@ -99,145 +179,219 @@ def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
     
     return train_loader, test_loader
 
+
+def learn_parameters(ccpe_dataset, config, true_params):
+
+    if not config.learn_parameters == True:
+        return true_params.copy()
+
+    error_params_hat = AttrDict({})
+
+    for do in config.target_POs:
+        error_params_hat[f'alpha_{do}'],  error_params_hat[f'beta_{do}'] = crossfit_ccpe(ccpe_dataset, do, config)
+    
+    return error_params_hat
+    
+
+def learn_weights(weight_dataset, config):
+    '''
+        Estimate weighting function on training dataset and run inference on evaluation fold
+    '''
+
+    train_loader, test_loader = get_loaders(
+        X_train=weight_dataset.X_train,
+        YCF_train=weight_dataset.Y_train,
+        X_test=weight_dataset.X_test,
+        YCF_test=weight_dataset.Y_test,
+        target='D', 
+        do=0, 
+        conditional=False
+    )
+
+    loss_config = AttrDict({
+        'pd': weight_dataset.Y_train['D'].mean(),
+        'reweight': False,
+        'alpha': None,
+        'beta': None
+    })
+        
+    model = MLP(n_feats=weight_dataset.X_train.shape[1])
+    losses = train(model, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, desc='Propensity model')
+
+    return model
+
 ###########################################################
 ######## Risk minimmization experiments
 ###########################################################
 
-def run_risk_minimization_exp(exp_config, baselines, param_configs, N_RUNS, n_epochs=5, train_ratio=.7):
 
-    po_results = []
+def run_risk_minimization_exp(config, baselines, param_configs):
+
     te_results = []
-
+    po_results = []
+    
     for error_params in param_configs:
+        for run_num in range(config.n_runs):
 
-        for RUN in range(N_RUNS):
+            print(error_params)
 
+            print('===============================================================================================================')
+            print(f"RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
+            print('=============================================================================================================== \n')
 
-            #TODO: update dataset loading here to 
-            # - (1) insert selection bias and 
-            # - (2) estimate weights based on a configurable parameter
-            X, Y = load_dataset(exp_config['benchmark'], error_params)
-            split_ix = int(X.shape[0]*train_ratio)
-
-            dataset = {
-                'X_train': X[:split_ix],
-                'Y_train': Y[:split_ix],
-                'X_test': X[split_ix:],
-                'Y_test': Y[split_ix:]
-            }
-
-            for baseline in baselines:
-
-                print('===============================================================================================================')
-                print(f"RUN: {RUN}, model: {baseline['model']}, alpha_0: {error_params['alpha_0']}, alpha_1: {error_params['alpha_1']}, beta_0: {error_params['beta_0']}, beta_1: {error_params['beta_1']}")
-                print('=============================================================================================================== \n')
-
-                loss_config = {
-                    'pd': Y['D'].mean(),
-                    'reweight': True if 'RW' in baseline['model'] else False
-                }
-
-                po_metrics, te_metrics = run_baseline_two_sided(
-                    dataset=dataset,
-                    baseline=baseline,
-                    error_params=error_params,
-                    loss_config=loss_config,
-                    exp_config=exp_config,
-                    n_epochs=n_epochs)
-                
-                po_results.extend(po_metrics)
-                te_results.append(te_metrics)
+            te_baseline_metrics, po_baseline_metrics = run_baselines(config, baselines, error_params)
+            te_results.extend(te_baseline_metrics)
+            po_results.append(po_baseline_metrics)
 
     return pd.DataFrame(po_results), pd.DataFrame(te_results)
 
 
-def run_baseline_two_sided(dataset, baseline, error_params,
-        loss_config, exp_config, n_epochs=5):
+def run_baselines(config, baselines, error_params):
 
-    log_metadata = error_params.copy()
-    log_metadata['model'] = baseline['model']
-    po_metrics = []
+    # TODO: load_benchmark should insert environment-specific selection bias only to X_train/Y_train
+    X_train, X_test, Y_train, Y_test = load_benchmark(config.benchmark, error_params)
+
+    crossfit_erm_preds = { baseline.model: {} for baseline in baselines }
+
+    if config.crossfit_erm == True:
+        split_permuations = [(0,1,2), (0,2,1), (2,0,1)]
+    else:
+        split_permuations = [(0,1,2)]
+    
+    for s_ix, (p,q,r) in enumerate(split_permuations):
+
+        data_splits = get_splits(X_train, X_test, Y_train, Y_test, config)
+        weight_dataset, ccpe_dataset, erm_dataset = data_splits[p], data_splits[q], data_splits[r]
+
+        if config.learn_weights:
+            propensity_model = learn_weights(weight_dataset, config)
+
+        error_params_hat = learn_parameters(ccpe_dataset, config, true_params=error_params)
+
+        for baseline in baselines:
+
+            loss_config = AttrDict({
+                'd_mean': Y_test['D'].mean(),
+                'reweight': baseline.reweight,
+            })
+            baseline.propensity_model = propensity_model if config.learn_weights else None
+            baseline.error_params_hat = error_params_hat
+
+            crossfit_erm_preds[baseline.model][s_ix] = run_erm_split(
+                erm_dataset=erm_dataset,
+                baseline_config=baseline,
+                loss_config=loss_config,
+                exp_config=config
+            )
+    log_metadata = AttrDict(error_params)
+    log_metadata.benchmark = config.benchmark.name
+    te_metrics, po_metrics = compute_crossfit_metrics(crossfit_erm_preds, Y_test, len(split_permuations), config, log_metadata)
+
+
+def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
+    '''
+        erm_split: [erm train split (.33 of training data), ERM test split (test data)]    
+    '''
+
     po_preds = {}
 
-    for do in [0, 1]:
+    for do in exp_config.target_POs:
 
-        # Setup invervention-specific configuration parameters
-        loss_config['alpha'] = error_params[f'alpha_{do}'] if 'SL' in baseline['model'] else None
-        loss_config['beta'] = error_params[f'beta_{do}'] if 'SL' in baseline['model'] else None
-        loss_config['do'] = do
+        loss_config.alpha = baseline_config.error_params_hat[f'alpha_{do}'] if baseline_config.sl else None
+        loss_config.beta = baseline_config.error_params_hat[f'beta_{do}'] if baseline_config.sl else None
+        loss_config.do = do
 
-        do_metrics, y_hat = run_baseline_one_sided(dataset, baseline, do, loss_config, n_epochs)
-        po_metrics.append({**log_metadata, **do_metrics, 'do': do})
-        po_preds[do] = y_hat
+        train_loader, test_loader = get_loaders(
+            X_train=erm_dataset.X_train,
+            YCF_train=erm_dataset.Y_train,
+            X_test=erm_dataset.X_test,
+            YCF_test=erm_dataset.Y_test,
+            target=baseline_config.target, 
+            do=do,
+            conditional=baseline_config.conditional
+        )
+
+        model = MLP(n_feats=erm_dataset.X_train.shape[1])
+        propensity_model = baseline_config.propensity_model if exp_config.learn_weights else None
+        losses = train(model, train_loader, loss_config=loss_config, n_epochs=exp_config.n_epochs, desc=f"ERM: {baseline_config.model}")
+        _, py_hat = evaluate(model, test_loader)        
+        po_preds[do] = py_hat
     
-    treatment_effects = compute_treatment_metrics(po_preds, dataset['Y_test'], exp_config['benchmark']['name'], exp_config['policy_gamma'])
-    te_metrics = {**log_metadata, **treatment_effects}
+    return po_preds
 
-    return po_metrics, te_metrics
-
-
-def run_baseline_one_sided(dataset, baseline, do, loss_config, n_epochs=5):
-
-    target, baseline_name = baseline['target'], baseline['model']
-    if 'Oracle' in baseline_name:
-        target += f'_{do}'
-    
-    conditional = 'OBS' not in baseline_name
-
-    train_loader, test_loader = get_loaders(
-        X_train=dataset['X_train'],
-        YCF_train=dataset['Y_train'],
-        X_test=dataset['X_test'],
-        YCF_test=dataset['Y_test'],
-        target=target, 
-        do=do, 
-        conditional=conditional
-    )
-        
-    model = MLP(n_feats=dataset['X_train'].shape[1])
-    losses = train(model, target, train_loader, loss_config=loss_config, n_epochs=n_epochs)
-    metrics, py_hat = evaluate(model, test_loader)
-
-    return metrics, py_hat
   
 ###########################################################
 ######## Parameter estimation
 ###########################################################
 
-def ccpe(exp_config, dataset, do, n_epochs):
+def crossfit_ccpe(ccpe_dataset, do, config):
 
-    loss_config = {
+    X_train, Y_train = ccpe_dataset['X_train'], ccpe_dataset['Y_train']
+    split_ix = int(X_train.shape[0]*.5)
+
+    ccpe_split_1 = AttrDict({
+        'X_train': X_train.iloc[split_ix:, :],
+        'Y_train': Y_train.iloc[split_ix:, :],
+        'X_test': X_train.iloc[:split_ix, :],
+        'Y_test': Y_train.iloc[:split_ix, :],
+    })
+
+    ccpe_split_2 = AttrDict({
+        'X_train': X_train.iloc[:split_ix, :],
+        'Y_train': Y_train.iloc[:split_ix, :],
+        'X_test': X_train.iloc[split_ix:, :],
+        'Y_test': Y_train.iloc[split_ix:, :],
+    })
+
+    _, alpha_1_hat, beta_1_hat = ccpe(ccpe_split_1, do, config)
+    _, alpha_2_hat, beta_2_hat = ccpe(ccpe_split_2, do, config)
+
+    return (alpha_1_hat+alpha_2_hat)/2, (beta_1_hat+beta_2_hat)/2
+
+def ccpe(dataset, do, config):
+    '''
+        Fit class probability function and evaluate min/max on held-out data
+    '''
+
+    loss_config = AttrDict({
         'alpha': None,
         'beta':  None,
-        'pi_pdf': exp_config['benchmark']['config']['PI_PDF'],
         'do': do,
         'reweight': False
-    }
+    })
 
-    baseline = {
-        'model': 'COM',
-        'target': 'Y'
-    }
+    train_loader, test_loader = get_loaders(
+        X_train=dataset.X_train,
+        YCF_train=dataset.Y_train,
+        X_test=dataset.X_test,
+        YCF_test=dataset.Y_test,
+        target='Y', 
+        do=do, 
+        conditional=True
+    )
 
-    metrics, py_hat = run_baseline_one_sided(dataset, baseline, do, loss_config, n_epochs)
+    # Fit Y ~ X|T=t
+    model = MLP(n_feats=dataset.X_train.shape[1])
+    losses = train(model, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, desc=f"CCPE: {do}")
+    _, py_hat = evaluate(model, test_loader)
     
     # Compute error parameters from predicted probabilities
-    alpha_hat = np.quantile(py_hat, .01)
-    beta_hat = 1 - np.quantile(py_hat, .99)
+    alpha_hat = py_hat.min()
+    beta_hat = 1 - py_hat.max()
 
-    return alpha_hat, beta_hat
+    return py_hat, alpha_hat, beta_hat
 
-def run_ccpe_exp(exp_config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epochs=5, train_ratio=.7):
+def run_ccpe_exp(config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epochs=5, train_ratio=.7):
     
     results = []
     for error_params in error_param_configs:
         for NS in sample_sizes:
 
-            exp_config['benchmark']['NS'] = NS
+            config['benchmark']['NS'] = NS
 
             for RUN in range(N_RUNS):
-                X, Y = load_dataset(exp_config['benchmark'], error_params)
-                split_ix = int(X.shape[0]*train_ratio)
+                X, Y = load_benchmark(config['benchmark'], error_params)
+                split_ix = int(X.shape[0]*config['train_test_ratio'],)
 
                 dataset = {
                     'X_train': X[:split_ix],
@@ -246,7 +400,7 @@ def run_ccpe_exp(exp_config, error_param_configs, sample_sizes, N_RUNS, do=0, n_
                     'Y_test': Y[split_ix:]
                 }
 
-                alpha_hat, beta_hat = ccpe(exp_config, dataset, do, n_epochs)
+                alpha_hat, beta_hat = ccpe(dataset, do, config)
 
                 results.append({
                     'NS': NS,
@@ -259,46 +413,3 @@ def run_ccpe_exp(exp_config, error_param_configs, sample_sizes, N_RUNS, do=0, n_
                 })
         
     return pd.DataFrame(results)
-
-def ccpe_benchmark_exp(env, param_configs, SAMPLE_SIZES, N_RUNS, n_epochs):
-
-    exp_results = {
-        'alpha': [],
-        'beta': [],
-        'alpha_hat': [],
-        'beta_hat': [],
-        'alpha_error': [],
-        'beta_error': [],
-        'NS': []
-    }
-
-    for config in param_configs:
-        for NS in SAMPLE_SIZES:
-            print('======================================================================')
-            print(f"NS: {SAMPLE_SIZES}, alpha: {config['alpha']}, beta: {config['beta']}")
-            print('====================================================================== \n')
-            for RUN in range(N_RUNS):
-
-                X, Y, error_params = generate_syn_data(
-                    NS=NS,
-                    K=1,
-                    y0_pdf=env['Y0_PDF'],
-                    y1_pdf=env['Y1_PDF'],
-                    pi_pdf=env['PI_PDF'],
-                    alpha_0=config['alpha'],
-                    alpha_1=config['alpha'],
-                    beta_0=config['beta'],
-                    beta_1=config['beta'],
-                )
-
-                alpha_hat, beta_hat = ccpe(env, X, Y, target=f'Y0', do=0, n_epochs=n_epochs)
-                
-                exp_results['alpha'].append(config['alpha'])
-                exp_results['beta'].append(config['beta'])
-                exp_results['alpha_hat'].append(alpha_hat)
-                exp_results['beta_hat'].append(beta_hat)
-                exp_results['alpha_error'].append(alpha_hat - config['alpha'])
-                exp_results['beta_error'].append(beta_hat - config['beta'])
-                exp_results['NS'].append(NS)
-
-    return exp_results

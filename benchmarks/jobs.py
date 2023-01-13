@@ -5,10 +5,10 @@ from numpy.random import permutation
 
 def generate_jobs_data(benchmark_config, error_params, shuffle=True):
 
-    with np.load(benchmark_config['train_path']) as f:
+    with np.load(benchmark_config.train_path) as f:
         train_data = {key:f[key] for key in f}
 
-    with np.load(benchmark_config['test_path']) as f:
+    with np.load(benchmark_config.test_path) as f:
         test_data = {key:f[key] for key in f}
 
     X = np.concatenate((train_data['x'][:,:,0],  test_data['x'][:,:,0]), axis=0)
@@ -47,6 +47,7 @@ def generate_jobs_data(benchmark_config, error_params, shuffle=True):
         'Y_1': Y_1,
         'Y': Y,
         'pD': np.ones_like(D) * D.mean(),
+        'pD_hat': np.ones_like(D) * D.mean(),
         'D': D,
         'E': E # Include for computign the ATT on JOBS test data
     }
