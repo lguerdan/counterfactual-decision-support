@@ -11,7 +11,7 @@ import ccpe, erm, model
 ######## Risk minimmization experiments
 ###########################################################
 
-def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
+def run_risk_minimization_exp(config, baselines, param_configs):
 
     te_results = []
     po_results = []
@@ -28,8 +28,8 @@ def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
             po_results.extend(po_baseline_metrics)
 
     po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
-    po_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.NS}_PO.csv')
-    te_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.NS}_TE.csv')
+    po_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.benchmark.NS}_PO.csv')
+    te_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.benchmark.NS}_TE.csv')
 
     return po_df, te_df
 
