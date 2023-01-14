@@ -19,7 +19,6 @@ def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
     for NS in config.sample_sizes:
         te_results = []
         po_results = []
-        config.benchmark.NS = NS
         for error_params in param_configs:
 
             for run_num in range(config.n_runs):
@@ -28,7 +27,7 @@ def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
                 print(f"NS: {NS}, RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
                 print('=============================================================================================================== \n')
 
-                te_baseline_metrics, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params)
+                te_baseline_metrics, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params, NS)
                 te_results.extend(te_baseline_metrics)
                 po_results.extend(po_baseline_metrics)
 
@@ -49,9 +48,7 @@ def run_ccpe_exp(config, error_param_configs, sample_sizes, do=0):
     results = []
     for error_params in error_param_configs:
         for NS in sample_sizes:
-
-            config.benchmark.NS = NS
-
+            config.benchmark.update({'NS': NS})
             for RUN in range(config.n_runs):
                 X_train, X_test, Y_train, Y_test = loader.get_benchmark(config.benchmark, error_params)
                 split_ix = int(X.shape[0]*config.train_test_ratio)

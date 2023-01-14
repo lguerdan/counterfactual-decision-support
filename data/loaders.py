@@ -3,10 +3,10 @@ import torch
 
 from data.benchmarks import synthetic, ohie, jobs
 
-def get_benchmark(benchmark_config, error_params):
+def get_benchmark(benchmark_config, error_params, NS):
 
     if 'synthetic' in benchmark_config['name']:
-        X, Y = synthetic.generate_syn_data(benchmark_config, error_params)
+        X, Y = synthetic.generate_syn_data(benchmark_config, error_params, NS)
 
     elif benchmark_config['name'] == 'ohie':
         X, Y = ohie.generate_ohie_data(benchmark_config['path'], error_params)

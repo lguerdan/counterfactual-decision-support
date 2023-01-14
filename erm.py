@@ -5,10 +5,10 @@ import data.loaders as loader
 import ccpe, utils
 from model import *
 
-def run_model_comparison(config, baselines, error_params):
+def run_model_comparison(config, baselines, error_params, NS=None):
 
     # TODO: load_benchmark should insert environment-specific selection bias only to X_train/Y_train
-    X_train, X_test, Y_train, Y_test = loader.get_benchmark(config.benchmark, error_params)
+    X_train, X_test, Y_train, Y_test = loader.get_benchmark(config.benchmark, error_params, NS)
 
     crossfit_erm_preds = { baseline.model: {} for baseline in baselines }
 
@@ -45,6 +45,7 @@ def run_model_comparison(config, baselines, error_params):
 
     log_metadata = AttrDict({**error_params, **error_params_hat})
     log_metadata.benchmark = config.benchmark.name
+    log_metadata.NS = config.benchmark.NS
     return compute_crossfit_metrics(crossfit_erm_preds, Y_test, len(split_permuations), config, log_metadata)
 
 
