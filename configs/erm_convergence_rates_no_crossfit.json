@@ -11,21 +11,21 @@
 
     "log_dir": "results",
 
-    "sample_sizes": [3000, 5000,10000,20000],
+    "sample_sizes": [5000, 15000, 25000, 35000],
     "learn_weights": true,
     "learn_parameters": true,
-    "n_epochs": 2,
-    "n_runs": 1,
+    "n_epochs": 20,
+    "n_runs": 2,
     "target_POs": [0],
     "policy_gamma": 0,
     "train_ratio": 0.7,
-    "split_erm": false,
+    "split_erm": true,
     "crossfit_erm": false,
     "split_ccpe": true,
     "crossfit_ccpe": true,
     "error_params": [
         {
-            "alpha_0": 0.5,
+            "alpha_0": 0.3,
             "alpha_1": 0,
             "beta_0": 0.1,
             "beta_1": 0

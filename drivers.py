@@ -19,6 +19,7 @@ def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
     for NS in config.sample_sizes:
         te_results = []
         po_results = []
+        config.benchmark.NS = NS
         for error_params in param_configs:
 
             for run_num in range(config.n_runs):

@@ -45,7 +45,7 @@ def run_model_comparison(config, baselines, error_params, NS=None):
 
     log_metadata = AttrDict({**error_params, **error_params_hat})
     log_metadata.benchmark = config.benchmark.name
-    log_metadata.NS = config.benchmark.NS
+    log_metadata.NS = NS
     return compute_crossfit_metrics(crossfit_erm_preds, Y_test, len(split_permuations), config, log_metadata)
 
 
