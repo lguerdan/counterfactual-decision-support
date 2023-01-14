@@ -1,7 +1,8 @@
 from attrdict import AttrDict
+from sklearn.metrics import roc_auc_score
 
-import data_loaders.loaders as loader
-import ccpe
+import data.loaders as loader
+import ccpe, utils
 from model import *
 
 def run_model_comparison(config, baselines, error_params):
@@ -42,7 +43,7 @@ def run_model_comparison(config, baselines, error_params):
                 exp_config=config
             )
 
-    log_metadata = AttrDict(error_params)
+    log_metadata = AttrDict({**error_params, **error_params_hat})
     log_metadata.benchmark = config.benchmark.name
     return compute_crossfit_metrics(crossfit_erm_preds, Y_test, len(split_permuations), config, log_metadata)
 
@@ -56,8 +57,8 @@ def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
 
     for do in exp_config.target_POs:
 
-        loss_config.alpha = baseline_config.error_params_hat[f'alpha_{do}'] if baseline_config.sl else None
-        loss_config.beta = baseline_config.error_params_hat[f'beta_{do}'] if baseline_config.sl else None
+        loss_config.alpha = baseline_config.error_params_hat[f'alpha_{do}_hat'] if baseline_config.sl else None
+        loss_config.beta = baseline_config.error_params_hat[f'beta_{do}_hat'] if baseline_config.sl else None
         loss_config.do = do
 
         train_loader, test_loader = loader.get_loaders(

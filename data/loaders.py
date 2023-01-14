@@ -1,7 +1,7 @@
 from attrdict import AttrDict
 import torch
 
-from data_loaders.benchmarks import synthetic, ohie, jobs
+from data.benchmarks import synthetic, ohie, jobs
 
 def get_benchmark(benchmark_config, error_params):
 

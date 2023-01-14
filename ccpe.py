@@ -1,6 +1,6 @@
 from attrdict import AttrDict
 
-from data_loaders import loaders
+from data import loaders
 from model import *
 
 
@@ -10,13 +10,13 @@ from model import *
 
 def learn_parameters(ccpe_dataset, config, true_params):
 
-    if not config.learn_parameters == True:
-        return true_params.copy()
-
     error_params_hat = AttrDict({})
 
     for do in config.target_POs:
-        error_params_hat[f'alpha_{do}'],  error_params_hat[f'beta_{do}'] = crossfit_ccpe(ccpe_dataset, do, config)
+        if config.learn_parameters == True:
+            error_params_hat[f'alpha_{do}_hat'],  error_params_hat[f'beta_{do}_hat'] = crossfit_ccpe(ccpe_dataset, do, config)
+        else:
+            error_params_hat[f'alpha_{do}_hat'],  error_params_hat[f'beta_{do}_hat'] = true_params[f'alpha_{do}'],  true_params[f'beta_{do}']
     
     return error_params_hat
 

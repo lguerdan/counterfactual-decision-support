@@ -2,53 +2,59 @@ import numpy as np
 import pandas as pd
 import numpy.matlib
 from attrdict import AttrDict
-import torch
+import os, sys, torch, json
 
-from data_loaders.benchmarks import synthetic, ohie, jobs
-import ccpe, erm, model
+import ccpe, erm, model, utils
+from data.benchmarks import synthetic, ohie, jobs
 
 ###########################################################
 ######## Risk minimmization experiments
 ###########################################################
 
-def run_risk_minimization_exp(config, baselines, param_configs):
+def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
 
-    te_results = []
-    po_results = []
+    exp_path = f'{config.log_dir}/{exp_name}/'
+    utils.write_file(json.dumps(config), exp_path, f'config.json')
     
-    for error_params in param_configs:
-        for run_num in range(config.n_runs):
+    for NS in config.sample_sizes:
+        te_results = []
+        po_results = []
+        config.benchmark.NS = NS
+        for error_params in param_configs:
 
-            print('===============================================================================================================')
-            print(f"RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
-            print('=============================================================================================================== \n')
+            for run_num in range(config.n_runs):
+            
+                print('===============================================================================================================')
+                print(f"NS: {NS}, RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
+                print('=============================================================================================================== \n')
 
-            te_baseline_metrics, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params)
-            te_results.extend(te_baseline_metrics)
-            po_results.extend(po_baseline_metrics)
+                te_baseline_metrics, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params)
+                te_results.extend(te_baseline_metrics)
+                po_results.extend(po_baseline_metrics)
 
-    po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
-    po_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.benchmark.NS}_PO.csv')
-    te_df.to_csv(f'{config.log_dir}/baseline_comparison_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={config.benchmark.NS}_TE.csv')
+        po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
+
+       
+        utils.write_file(po_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={NS}_PO.csv')
+        utils.write_file(te_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={NS}_TE.csv')
 
     return po_df, te_df
 
-  
 ###########################################################
 ######## Parameter estimation experiments
 ###########################################################
 
-def run_ccpe_exp(config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epochs=5, train_ratio=.7):
+def run_ccpe_exp(config, error_param_configs, sample_sizes, do=0):
     
     results = []
     for error_params in error_param_configs:
         for NS in sample_sizes:
 
-            config['benchmark']['NS'] = NS
+            config.benchmark.NS = NS
 
-            for RUN in range(N_RUNS):
-                X, Y = loader.get_benchmark(config['benchmark'], error_params)
-                split_ix = int(X.shape[0]*config['train_test_ratio'],)
+            for RUN in range(config.n_runs):
+                X_train, X_test, Y_train, Y_test = loader.get_benchmark(config.benchmark, error_params)
+                split_ix = int(X.shape[0]*config.train_test_ratio)
 
                 dataset = {
                     'X_train': X[:split_ix],
@@ -61,6 +67,7 @@ def run_ccpe_exp(config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epoc
 
                 results.append({
                     'NS': NS,
+                    'benchmark': config.benchmark.name,
                     'alpha': error_params[f'alpha_{do}'],
                     'beta': error_params[f'beta_{do}'],
                     'alpha_hat': alpha_hat,
@@ -70,6 +77,16 @@ def run_ccpe_exp(config, error_param_configs, sample_sizes, N_RUNS, do=0, n_epoc
                 })
 
     ccpe_results = pd.DataFrame(results)
-    ccpe_results.to_csv(f'{config.log_dir}/parameter_estimation_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}.csv')
-        
+    path = f'{config.log_dir}/{exp_name}/'
+    utils.write_file(ccpe_results, path, f'{config.log_dir}/parameter_estimation_runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}.csv')
+
     return ccpe_results
+
+
+if __name__ == '__main__':
+
+    exp_type, exp_name = sys.argv[1], sys.argv[2]
+    config = AttrDict(json.load(open(f'configs/{exp_name}.json')))
+
+    if exp_type == 'erm':
+        run_risk_minimization_exp(config, config.baselines, config.error_params, exp_name)
