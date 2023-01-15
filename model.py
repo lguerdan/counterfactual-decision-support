@@ -30,7 +30,7 @@ def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model
 
     opt = optim.Adam(model.parameters(), lr=lr)
     epoch_loss = []
-    scheduler = optim.lr_scheduler.MultiStepLR(opt, milestones=[15, 25], gamma=0.5)
+    scheduler = optim.lr_scheduler.MultiStepLR(opt, milestones=[20], gamma=0.5)
 
     for epoch in tqdm(range(0, n_epochs), desc=desc):
         current_loss = 0.0
