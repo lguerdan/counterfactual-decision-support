@@ -94,7 +94,6 @@ def get_loss(py_hat, y, loss_config, weights):
         
         except:
             print('py_hat', py_hat)
-            print('py', py)
             print(f'phat_y1 min: {phat_y1.min()}, phat_y1 max: {phat_y1.max()}')
             print(f'phat_y0 min: {phat_y0.min()}, phat_y0 max: {phat_y0.max()}')
             val_loss = 0 # Temporary fix so training doesn't break

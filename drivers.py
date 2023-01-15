@@ -43,10 +43,10 @@ def run_hyperparam_exp(config, baselines, error_params, exp_name):
 ######## Risk minimmization experiments
 ###########################################################
 
-def run_risk_minimization_exp(config, baselines, param_configs, exp_name, colab_checkpoint):
+def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
 
     exp_path = f'{config.log_dir}/{exp_name}/'
-    utils.write_file(json.dumps(config), exp_path, f'config.json', colab_checkpoint)
+    utils.write_file(json.dumps(config), exp_path, f'config.json')
     
     for NS in config.sample_sizes:
         te_results = []
@@ -67,8 +67,8 @@ def run_risk_minimization_exp(config, baselines, param_configs, exp_name, colab_
         po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
 
        
-        utils.write_file(po_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={NS}_PO.csv', colab_checkpoint)
-        utils.write_file(te_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={NS}_TE.csv', colab_checkpoint)
+        utils.write_file(po_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={NS}_PO.csv')
+        utils.write_file(te_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_samples={NS}_TE.csv')
 
     return po_df, te_df
 
@@ -118,10 +118,8 @@ if __name__ == '__main__':
     exp_type, exp_name = sys.argv[1], sys.argv[2]
     config = AttrDict(json.load(open(f'configs/{exp_name}.json')))
 
-    colab_export = True if (len(sys.argv) == 4) and (sys.argv[3] == 'colab') else False
-
     if exp_type == 'erm':
-        run_risk_minimization_exp(config, config.baselines, config.error_params, exp_name, colab_export)
+        run_risk_minimization_exp(config, config.baselines, config.error_params, exp_name)
 
     if exp_type == 'erm_hyperparam':
         run_hyperparam_exp(config, config.baselines, config.error_params, exp_name)

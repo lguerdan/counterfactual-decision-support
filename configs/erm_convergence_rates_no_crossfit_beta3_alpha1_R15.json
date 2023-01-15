@@ -16,6 +16,7 @@
     "learn_parameters": true,
     "n_epochs": 30,
     "n_runs": 15,
+    "lr": 0.001,
     "target_POs": [0],
     "policy_gamma": 0,
     "train_ratio": 0.7,
