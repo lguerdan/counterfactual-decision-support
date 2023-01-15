@@ -11,7 +11,7 @@
 
     "log_dir": "results",
 
-    "sample_sizes": [5000, 15000, 25000, 35000],
+    "sample_sizes": [10000, 20000, 30000, 40000],
     "learn_weights": true,
     "learn_parameters": true,
     "n_epochs": 20,

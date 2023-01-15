@@ -26,9 +26,9 @@ def get_sample_weights(x, pd, loss_config, propensity_model):
     pd_hat = propensity_model(x) if propensity_model else pd
     return (1-loss_config.d_mean)/(1-pd_hat) if loss_config.do == 0 else loss_config.d_mean/pd_hat
 
-def train(model, train_loader, loss_config, n_epochs, desc, propensity_model=None):
+def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model=None):
 
-    opt = optim.Adam(model.parameters(), lr=.001)
+    opt = optim.Adam(model.parameters(), lr=lr)
     epoch_loss = []
 
     for epoch in tqdm(range(0, n_epochs), desc=desc):

@@ -7,6 +7,38 @@ import os, sys, torch, json
 import ccpe, erm, model, utils
 from data.benchmarks import synthetic, ohie, jobs
 
+
+def run_hyperparam_exp(config, baselines, error_params, exp_name):
+
+    exp_path = f'{config.log_dir}/{exp_name}/'
+    utils.write_file(json.dumps(config), exp_path, f'config.json')
+
+    po_results = []
+
+    for NS in config.sample_sizes:
+        for lr in [.01, .005, .001, .0001]:
+            for n_epochs in [10, 15, 20, 25, 30]:
+
+                print('==================================================================================')
+                print(f"NS: {NS}, LR: {lr}, epochs: {n_epochs}")
+                print('================================================================================== \n')
+
+                config.lr = lr
+                config.n_epochs = n_epochs
+                _, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params[0], NS)
+
+                for result in po_baseline_metrics:
+                    result['lr'] = lr
+                    result['n_epochs'] = n_epochs
+
+                po_results.extend(po_baseline_metrics)
+        
+    po_df = pd.DataFrame(po_results)
+    utils.write_file(po_df, exp_path, f'runs={config.n_runs}_hyperparamexp_benchmark={config.benchmark.name}_samples={NS}_PO.csv')
+
+    return po_df
+
+
 ###########################################################
 ######## Risk minimmization experiments
 ###########################################################
@@ -88,3 +120,6 @@ if __name__ == '__main__':
 
     if exp_type == 'erm':
         run_risk_minimization_exp(config, config.baselines, config.error_params, exp_name)
+
+    if exp_type == 'erm_hyperparam':
+        run_hyperparam_exp(config, config.baselines, config.error_params, exp_name)

@@ -74,7 +74,7 @@ def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
 
         eta_model = MLP(n_feats=erm_dataset.X_train.shape[1])
         propensity_model = baseline_config.propensity_model if exp_config.learn_weights else None
-        losses = train(eta_model, train_loader, loss_config=loss_config, n_epochs=exp_config.n_epochs, desc=f"ERM: {baseline_config.model}")
+        losses = train(eta_model, train_loader, loss_config=loss_config, n_epochs=exp_config.n_epochs, lr=exp_config.lr, desc=f"ERM: {baseline_config.model}")
         _, py_hat = evaluate(eta_model, test_loader)        
         po_preds[do] = py_hat
     
@@ -103,7 +103,7 @@ def learn_weights(weight_dataset, config):
     })
         
     pi = MLP(n_feats=weight_dataset.X_train.shape[1])
-    losses = train(pi, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, desc='Propensity model')
+    losses = train(pi, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, lr=config.lr, desc='Propensity model')
 
     return pi
 

@@ -62,7 +62,6 @@ def eta(x, environment):
 def generate_syn_data(env, error_params, NS, shuffle=True):  
     
     NS = NS if NS else env['NS']
-    print('Number of samples: ', NS)
 
     if env['name'] == 'synthetic_1D_sinusoidal':
         x = np.random.uniform(low=-1, high=1, size=(NS, 1))
