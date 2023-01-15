@@ -16,8 +16,8 @@ def run_hyperparam_exp(config, baselines, error_params, exp_name):
     po_results = []
 
     for NS in config.sample_sizes:
-        for lr in [.01, .005, .001, .0001]:
-            for n_epochs in [10, 15, 20, 25, 30]:
+        for lr in [.001]:
+            for n_epochs in [30]:
 
                 print('==================================================================================')
                 print(f"NS: {NS}, LR: {lr}, epochs: {n_epochs}")
