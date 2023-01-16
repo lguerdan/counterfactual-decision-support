@@ -1,9 +1,12 @@
 {
-    "benchmark": {
+    "benchmarks": [{
+        "name": "ohie",
+        "path": "data/OHIE/ohie_data.csv"
+    },{
         "name": "jobs",
         "train_path": "data/JOBS/jobs_DW_bin.new.10.train.npz",
         "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz"
-    },
+    }],
 
     "log_dir": "results",
 
@@ -11,10 +14,10 @@
     "learn_weights": false,
     "learn_parameters": false,
     "lr": 0.001,
-    "n_epochs": 25,
-    "n_runs": 4,
+    "n_epochs": 20,
+    "n_runs": 3,
     "target_POs": [0, 1],
-    "policy_gamma": 0.07794,
+    "policy_gamma": 0.1,
     "train_ratio": 0.7,
     "split_erm": true,
     "crossfit_erm": true,

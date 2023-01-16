@@ -26,7 +26,7 @@ def get_splits(X_train, X_test, Y_train, Y_test, config):
             'Y_train': Y_train,
             'Y_test': Y_test
         })
-        return [dataset.deepcopy(), dataset.deepcopy(), dataset.deepcopy()]
+        return [dataset, dataset, dataset]
     
     else:
         split_ix_1, split_ix_2 = int(.33*N_train), int(.66*N_train)

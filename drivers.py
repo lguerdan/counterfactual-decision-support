@@ -64,7 +64,7 @@ def run_benchmark_risk_minimization_exp(config, baselines, param_configs, exp_na
             for run_num in range(config.n_runs):
             
                 print('===============================================================================================================')
-                print(f"NS: {NS}, RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
+                print(f"Benchmark: {config.benchmark.name}, RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
                 print('=============================================================================================================== \n')
 
                 te_baseline_metrics, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params)
@@ -72,8 +72,8 @@ def run_benchmark_risk_minimization_exp(config, baselines, param_configs, exp_na
                 po_results.extend(po_baseline_metrics)
 
         po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
-        utils.write_file(po_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_alpha={error_params.alpha_0}_beta={error_params.beta_0}_PO.csv')
-        utils.write_file(te_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_benchmark={config.benchmark.name}_alpha={error_params.alpha_0}_beta={error_params.beta_0}_TE.csv')
+        utils.write_file(po_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_alpha={error_params.alpha_0}_beta={error_params.beta_0}_PO.csv')
+        utils.write_file(te_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_alpha={error_params.alpha_0}_beta={error_params.beta_0}_TE.csv')
 
     return po_df, te_df
 
@@ -160,3 +160,6 @@ if __name__ == '__main__':
 
     if exp_type == 'erm_hyperparam':
         run_hyperparam_exp(config, config.baselines, config.error_params, exp_name)
+
+    if exp_type == 'erm_experimental':
+        run_benchmark_risk_minimization_exp(config, config.baselines, config.error_params, exp_name)

@@ -24,7 +24,7 @@ def learn_parameters(ccpe_dataset, config, true_params):
 def crossfit_ccpe(ccpe_dataset, do, config):
 
     X_train, Y_train = ccpe_dataset['X_train'], ccpe_dataset['Y_train']
-    split_ix = int(X_train.shape[0]*.5)
+    split_ix = int(X_train.shape[0]*.7)
 
     ccpe_split_1 = AttrDict({
         'X_train': X_train.iloc[split_ix:, :],
@@ -33,17 +33,18 @@ def crossfit_ccpe(ccpe_dataset, do, config):
         'Y_test': Y_train.iloc[:split_ix, :],
     })
 
-    ccpe_split_2 = AttrDict({
-        'X_train': X_train.iloc[:split_ix, :],
-        'Y_train': Y_train.iloc[:split_ix, :],
-        'X_test': X_train.iloc[split_ix:, :],
-        'Y_test': Y_train.iloc[split_ix:, :],
-    })
+    # ccpe_split_2 = AttrDict({
+    #     'X_train': X_train.iloc[:split_ix, :],
+    #     'Y_train': Y_train.iloc[:split_ix, :],
+    #     'X_test': X_train.iloc[split_ix:, :],
+    #     'Y_test': Y_train.iloc[split_ix:, :],
+    # })
 
     _, alpha_1_hat, beta_1_hat = ccpe(ccpe_split_1, do, config)
-    _, alpha_2_hat, beta_2_hat = ccpe(ccpe_split_2, do, config)
+    # _, alpha_2_hat, beta_2_hat = ccpe(ccpe_split_2, do, config)
 
-    return (alpha_1_hat+alpha_2_hat)/2, (beta_1_hat+beta_2_hat)/2
+    # return (alpha_1_hat+alpha_2_hat)/2, (beta_1_hat+beta_2_hat)/2
+    return alpha_1_hat, beta_1_hat
 
 def ccpe(dataset, do, config):
     '''

@@ -155,7 +155,7 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
         ate = YS_1.mean() - YS_0.mean()
 
     elif benchmark == 'ohie':
-        ate = -0.0052
+        ate = 0.0158
 
     elif benchmark == 'jobs':
         ate = 0.07794
