@@ -155,17 +155,17 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
         ate = YS_1.mean() - YS_0.mean()
 
     elif benchmark == 'ohie':
-        ate = -0.00340
+        ate = -0.0052
 
     elif benchmark == 'jobs':
-        ate = -0.07794
+        ate = 0.07794
 
     else: 
         raise Exception("Invalid benchmark")
 
     # Evaluate over factual and counterfactual outcomes
     # E=1 is required for experimental sub-sample of NSW study
-    ate_hat = YS_1_hat[(E==1)].mean() - YS_0_hat[(E==1)].mean()
+    ate_hat = (YS_1_hat[E==1] - YS_0_hat[E==1]).mean()
 
     # Simulate treatment policy
     pi = np.zeros_like(D)
