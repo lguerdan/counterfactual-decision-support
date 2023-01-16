@@ -6,16 +6,13 @@ from data.benchmarks import synthetic, ohie, jobs
 def get_benchmark(benchmark_config, error_params, NS):
 
     if 'synthetic' in benchmark_config['name']:
-        X, Y = synthetic.generate_syn_data(benchmark_config, error_params, NS)
+        return synthetic.generate_syn_data(benchmark_config, error_params, NS)
 
     elif benchmark_config['name'] == 'ohie':
-        X, Y = ohie.generate_ohie_data(benchmark_config['path'], error_params)
+        return ohie.generate_ohie_data(benchmark_config['path'], error_params)
 
     elif benchmark_config['name'] == 'jobs':
-        X, Y = jobs.generate_jobs_data(benchmark_config, error_params)
-    
-    split_ix = int(X.shape[0]*.7)
-    return X[:split_ix], X[split_ix:], Y[:split_ix], Y[split_ix:]
+        return jobs.generate_jobs_data(benchmark_config, error_params)
 
 
 def get_splits(X_train, X_test, Y_train, Y_test, config):

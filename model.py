@@ -96,7 +96,7 @@ def get_loss(py_hat, y, loss_config, weights):
             print('py_hat', py_hat)
             print(f'phat_y1 min: {phat_y1.min()}, phat_y1 max: {phat_y1.max()}')
             print(f'phat_y0 min: {phat_y0.min()}, phat_y0 max: {phat_y0.max()}')
-            val_loss = 0 # Temporary fix so training doesn't break
+            val_loss = np.array([0]) # Temporary fix so training doesn't break
 
     else:
         val_loss = loss(py_hat, y)

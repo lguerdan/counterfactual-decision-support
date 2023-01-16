@@ -29,6 +29,7 @@ def run_model_comparison(config, baselines, error_params, NS=None):
 
         for baseline in baselines:
 
+            # Use test data baesrate because D is experimentally assigned in test data
             loss_config = AttrDict({
                 'd_mean': Y_test['D'].mean(),
                 'reweight': baseline.reweight,

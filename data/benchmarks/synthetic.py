@@ -59,7 +59,7 @@ def eta(x, environment):
              lambda v: -1.5*v+1.3,
              lambda v: 1.25*v - .9 ])
 
-def generate_syn_data(env, error_params, NS, shuffle=True):  
+def generate_syn_data(env, error_params, NS, train_ratio=.7, shuffle=True):  
     
     NS = NS if NS else env['NS']
 
@@ -126,4 +126,11 @@ def generate_syn_data(env, error_params, NS, shuffle=True):
         X = X.iloc[suffle_ix]
         Y = Y.iloc[suffle_ix]
 
-    return X, Y
+    split_ix = int(X.shape[0]*train_ratio)
+    X_train = X[:split_ix]
+    X_test = X[split_ix:]
+    Y_train = Y[:split_ix]
+    Y_test = Y[split_ix:]
+
+    return X_train, X_test, Y_train, Y_test
+

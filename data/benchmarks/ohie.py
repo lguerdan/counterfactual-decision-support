@@ -3,7 +3,7 @@ import numpy as np
 from numpy.random import permutation
 
 
-def generate_ohie_data(OHIE_PATH, error_params, shuffle=True):
+def generate_ohie_data(OHIE_PATH, error_params, train_ratio=.7, shuffle=True):
     
     ohie_df = pd.read_csv(OHIE_PATH)
     
@@ -55,4 +55,14 @@ def generate_ohie_data(OHIE_PATH, error_params, shuffle=True):
         X = X.iloc[suffle_ix]
         Y = Y.iloc[suffle_ix]
 
-    return X, Y
+    split_ix = int(X.shape[0]*train_ratio)
+    X_train = X[:split_ix]
+    X_test = X[split_ix:]
+    Y_train = Y[:split_ix]
+    Y_test = Y[split_ix:]
+
+    # selection bias: medicare opportunity only provided to individuals above the federal poverty line
+    X_train[(Y_train['D'] == 1) & (X_train['below_federal_pov'] == 0)]
+    Y_train[(Y_train['D'] == 1) & (X_train['below_federal_pov'] == 0)]
+
+    return X_train, X_test, Y_train, Y_test

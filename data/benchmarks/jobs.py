@@ -3,7 +3,7 @@ import pandas as pd
 from numpy.random import permutation
 
 
-def generate_jobs_data(benchmark_config, error_params, shuffle=True):
+def generate_jobs_data(benchmark_config, error_params, train_ratio=.7, shuffle=True):
 
     with np.load(benchmark_config.train_path) as f:
         train_data = {key:f[key] for key in f}
@@ -47,7 +47,7 @@ def generate_jobs_data(benchmark_config, error_params, shuffle=True):
         'Y_1': Y_1,
         'Y': Y,
         'pD': np.ones_like(D) * D.mean(),
-        'pD_hat': np.ones_like(D) * D.mean(),
+        'pD_hat': np.ones_like(D) * D[E==1].mean(),
         'D': D,
         'E': E # Include for computign the ATT on JOBS test data
     }
@@ -57,5 +57,11 @@ def generate_jobs_data(benchmark_config, error_params, shuffle=True):
         suffle_ix = permutation(X.index)
         X = X.iloc[suffle_ix]
         Y = Y.iloc[suffle_ix]
+    
+    split_ix = int(X.shape[0]*train_ratio)
+    X_train = X[:split_ix]
+    X_test = X[split_ix:]
+    Y_train = Y[:split_ix]
+    Y_test = Y[split_ix:]
         
-    return X, Y
+    return X_train, X_test, Y_train, Y_test
