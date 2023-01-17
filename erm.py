@@ -169,7 +169,7 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
 
     # Simulate treatment policy
     pi = np.zeros_like(D)
-    pi[YS_1_hat-YS_0_hat > policy_gamma] = 1
+    pi[YS_1_hat-YS_0_hat < policy_gamma] = 1
 
     # Compute propensities via ''ground truth'' treatment probabilities
     inv_weights = pD.copy()

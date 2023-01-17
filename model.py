@@ -20,7 +20,8 @@ class MLP(nn.Module):
         )
 
     def forward(self, x):
-        return self.layers(x)
+        y_pred = self.layers(x)
+        return torch.clamp(y_pred, 1e-9, 1. - 1e-9)
 
 def get_sample_weights(x, pd, loss_config, propensity_model):
     pd_hat = propensity_model(x) if propensity_model else pd
