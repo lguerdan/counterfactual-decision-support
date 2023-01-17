@@ -5,6 +5,8 @@ from torch import nn
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class MLP(nn.Module):
     def __init__(self, n_feats):
         super().__init__()
@@ -28,6 +30,9 @@ def get_sample_weights(x, pd, loss_config, propensity_model):
     return (1-loss_config.d_mean)/(1-pd_hat) if loss_config.do == 0 else loss_config.d_mean/pd_hat
 
 def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model=None):
+
+    train_loader = train_loader.to(DEVICE)
+    model = model.to(DEVICE)
 
     opt = optim.Adam(model.parameters(), lr=lr)
     epoch_loss = []
@@ -53,6 +58,9 @@ def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model
 
 def evaluate(model, loader):
 
+    loader = loader.to(DEVICE)
+    model = model.to(DEVICE)
+
     preds = []
     labels = []
     
@@ -70,7 +78,8 @@ def evaluate(model, loader):
 
     metrics = {
         'AU-ROC': roc_auc_score(y, py_hat),
-        'ACC': (y_hat == y).mean()
+        'ACC': (y_hat == y).mean(),
+        'loss': torch.nn.BCELoss(y_hat, y).to_numpy()
     }
 
     return metrics, py_hat
@@ -86,11 +95,13 @@ def get_loss(py_hat, y, loss_config, weights):
         phat_y0 = py_hat[y==0]
 
         try:
+            denom = min(1-beta-alpha, .005)
+            
             y1_losses = ((1-alpha)*loss(phat_y1, torch.ones_like(phat_y1)) -
-            beta*loss(phat_y1, torch.zeros_like(phat_y1))) / (1-beta-alpha)
+            beta*loss(phat_y1, torch.zeros_like(phat_y1))) / denom
 
             y0_losses = ((1-beta)*loss(phat_y0, torch.zeros_like(phat_y0)) -
-            alpha*loss(phat_y0, torch.ones_like(phat_y0))) / (1-beta-alpha)
+            alpha*loss(phat_y0, torch.ones_like(phat_y0))) / denom
             val_loss = torch.cat([y1_losses, y0_losses])
         
         except:
