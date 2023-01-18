@@ -31,9 +31,6 @@ def get_sample_weights(x, pd, loss_config, propensity_model):
 
 def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model=None):
 
-    train_loader = train_loader.to(DEVICE)
-    model = model.to(DEVICE)
-
     opt = optim.Adam(model.parameters(), lr=lr)
     epoch_loss = []
     scheduler = optim.lr_scheduler.MultiStepLR(opt, milestones=[20], gamma=0.5)
@@ -43,6 +40,8 @@ def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model
         for i, data in enumerate(train_loader, 0):
             opt.zero_grad()
             x, y, pd, _ = data
+            x, y, pd = x.to(DEVICE), y.to(DEVICE), pd.to(DEVICE)
+            model = model.to(DEVICE)
             y_hat = model(x)
             balancing_weights = get_sample_weights(x, pd, loss_config, propensity_model) if loss_config.reweight else None
             loss = get_loss(y_hat, y, loss_config, weights=balancing_weights)
@@ -58,28 +57,26 @@ def train(model, train_loader, loss_config, n_epochs, lr, desc, propensity_model
 
 def evaluate(model, loader):
 
-    loader = loader.to(DEVICE)
-    model = model.to(DEVICE)
-
     preds = []
     labels = []
     
     for i, data in enumerate(loader, 0):
         x, y, _, _ = data
+        model = model.to(DEVICE)
+        x, y = x.to(DEVICE), y.to(DEVICE)
         outputs = model(x)
         preds.append(outputs)
         labels.append(y)
 
     # Compute potential outcome classification metrics
-    py_hat = torch.cat(preds, dim=0).detach().numpy().squeeze()
-    y = torch.cat(labels, dim=0).detach().numpy()
+    py_hat = torch.cat(preds, dim=0).cpu().detach().numpy().squeeze()
+    y = torch.cat(labels, dim=0).cpu().detach().numpy()
     y_hat = np.zeros_like(y)
     y_hat[py_hat > .5] = 1
 
     metrics = {
         'AU-ROC': roc_auc_score(y, py_hat),
-        'ACC': (y_hat == y).mean(),
-        'loss': torch.nn.BCELoss(y_hat, y).to_numpy()
+        'ACC': (y_hat == y).mean()
     }
 
     return metrics, py_hat
@@ -95,8 +92,7 @@ def get_loss(py_hat, y, loss_config, weights):
         phat_y0 = py_hat[y==0]
 
         try:
-            denom = min(1-beta-alpha, .005)
-            
+            denom = max(1-beta-alpha, .01)
             y1_losses = ((1-alpha)*loss(phat_y1, torch.ones_like(phat_y1)) -
             beta*loss(phat_y1, torch.zeros_like(phat_y1))) / denom
 
@@ -105,6 +101,8 @@ def get_loss(py_hat, y, loss_config, weights):
             val_loss = torch.cat([y1_losses, y0_losses])
         
         except:
+            print('estiamted alpha', alpha)
+            print('estimated beta', beta)
             print('py_hat', py_hat)
             print(f'phat_y1 min: {phat_y1.min()}, phat_y1 max: {phat_y1.max()}')
             print(f'phat_y0 min: {phat_y0.min()}, phat_y0 max: {phat_y0.max()}')
