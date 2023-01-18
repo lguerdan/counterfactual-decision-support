@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.random import permutation
 import pandas as pd
+import math
 
 def pi(x, func):
     if func=='uniform': 
@@ -36,14 +37,21 @@ def eta(x, environment):
     elif environment=='sinusoid':
         return (.5 + .5 * np.sin(2.9*x + .1)).squeeze()
 
+    # elif environment=='piecewise_sinusoid':
+    #     return np.piecewise(x,[
+    #         ((-1 <= x) & (x <= -.61)),
+    #         ((-.61 < x) & (x <= 0.921)),
+    #         ((0.921 < x) & (x <= 1))],  
+    #         [lambda v: .4+.4*np.cos(9*v+5.5), 
+    #         lambda v: .5+.3*np.sin(8*v+.9)+.15*np.sin(10*v+.2)+.05*np.sin(30*v+.2),
+    #         lambda v: np.power(v, 3)]).squeeze()
+
     elif environment=='piecewise_sinusoid':
         return np.piecewise(x,[
-            ((-1 <= x) & (x <= -.61)),
-            ((-.61 < x) & (x <= 0.921)),
-            ((0.921 < x) & (x <= 1))],  
+            ((-1 <= x) & (x <= -.6428)),
+            ((-.6428 < x) & (x <= 1))], 
             [lambda v: .4+.4*np.cos(9*v+5.5), 
-            lambda v: .5+.3*np.sin(8*v+.9)+.15*np.sin(10*v+.2)+.05*np.sin(30*v+.2),
-            lambda v: np.power(v, 3)]).squeeze()
+            lambda v: .5+.3*np.sin(8*v+.9)+.15*np.sin(10*v+.2)+.05*np.sin(30*v+.2)]).squeeze()
 
     elif environment=='low_base_rate_sinusoid':
         return (.5-.5 * np.sin(2.9*x+.1)).squeeze()
@@ -120,6 +128,8 @@ def generate_syn_data(env, error_params, NS, train_ratio=.7, shuffle=True):
     }
 
     X, Y = pd.DataFrame(x), pd.DataFrame(dataset_y)
+
+    X = ((X - X.mean()) / math.sqrt(X.var()))
    
     if shuffle: 
         suffle_ix = permutation(X.index)
