@@ -1,11 +1,13 @@
 {
     "benchmarks": [{
         "name": "ohie",
-        "path": "data/OHIE/ohie_data.csv"
+        "path": "data/OHIE/ohie_data.csv",
+        "policy_gamma": 0.0158
     },{
         "name": "jobs",
         "train_path": "data/JOBS/jobs_DW_bin.new.10.train.npz",
-        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz"
+        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz",
+        "policy_gamma": 0.07794
     }],
 
     "log_dir": "results",

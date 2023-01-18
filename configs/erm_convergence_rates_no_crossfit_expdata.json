@@ -1,7 +1,8 @@
 {
     "benchmark": {
         "name": "ohie",
-        "path": "data/OHIE/ohie_data.csv"
+        "path": "data/OHIE/ohie_data.csv",
+        "policy_gamma": 0.0158
     },
 
     "log_dir": "results",

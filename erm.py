@@ -136,7 +136,7 @@ def compute_crossfit_metrics(crossfit_erm_preds, Y_test, n_splits, config, log_m
             po_metrics.append({**log_metadata, **po_result})
 
         if len(config.target_POs) == 2:
-            te_result = compute_treatment_metrics(po_preds, Y_test, config.benchmark.name, policy_gamma=0)
+            te_result = compute_treatment_metrics(po_preds, Y_test, config.benchmark.name, config.benchmark.policy_gamma)
             te_metrics.append({**log_metadata, **te_result, 'baseline': baseline_name })
             
     return te_metrics, po_metrics

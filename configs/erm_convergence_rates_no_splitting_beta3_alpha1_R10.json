@@ -6,7 +6,8 @@
             "Y0_PDF": "piecewise_sinusoid",
             "Y1_PDF": "low_base_rate_sinusoid",
             "PI_PDF": "linear"
-        }
+        },
+        "policy_gamma": 0
     },
 
     "log_dir": "results",

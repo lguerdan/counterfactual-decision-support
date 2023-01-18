@@ -2,7 +2,8 @@
     "benchmark": {
         "name": "jobs",
         "train_path": "data/JOBS/jobs_DW_bin.new.10.train.npz",
-        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz"
+        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz",
+        "policy_gamma": 0.07794
     },
 
     "log_dir": "results",
@@ -14,7 +15,6 @@
     "n_epochs": 25,
     "n_runs": 4,
     "target_POs": [0, 1],
-    "policy_gamma": 0.07794,
     "train_ratio": 0.7,
     "split_erm": true,
     "crossfit_erm": true,
