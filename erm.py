@@ -37,16 +37,18 @@ def run_model_comparison(config, baselines, error_params, NS=None):
             baseline.propensity_model = propensity_model if config.learn_weights else None
             baseline.error_params_hat = error_params_hat
 
-            crossfit_erm_preds[baseline.model][s_ix] = run_erm_split(
+            preds, metrics =  run_erm_split(
                 erm_dataset=erm_dataset,
                 baseline_config=baseline,
                 loss_config=loss_config,
                 exp_config=config
             )
+            crossfit_erm_preds[baseline.model][s_ix] = preds
 
     log_metadata = AttrDict({**error_params, **error_params_hat})
     log_metadata.benchmark = config.benchmark.name
     log_metadata.NS = NS
+    log_metadata.val_loss = metrics.loss
     return compute_crossfit_metrics(crossfit_erm_preds, Y_test, len(split_permuations), config, log_metadata)
 
 
@@ -75,11 +77,12 @@ def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
 
         eta_model = MLP(n_feats=erm_dataset.X_train.shape[1])
         propensity_model = baseline_config.propensity_model if exp_config.learn_weights else None
-        losses = train(eta_model, train_loader, loss_config=loss_config, n_epochs=exp_config.n_epochs, lr=exp_config.lr, desc=f"ERM: {baseline_config.model}")
-        _, py_hat = evaluate(eta_model, test_loader)        
+        losses = train(eta_model, train_loader, loss_config=loss_config, n_epochs=exp_config.n_epochs,
+            lr=exp_config.lr, milestone=exp_config.milestone, gamma=exp_config.gamma, desc=f"ERM: {baseline_config.model}")
+        val_metrics, py_hat = evaluate(eta_model, test_loader)        
         po_preds[do] = py_hat
     
-    return po_preds
+    return po_preds, val_metrics
 
 def learn_weights(weight_dataset, config):
     '''
@@ -104,7 +107,7 @@ def learn_weights(weight_dataset, config):
     })
         
     pi = MLP(n_feats=weight_dataset.X_train.shape[1])
-    losses = train(pi, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, lr=config.lr, desc='Propensity model')
+    losses = train(pi, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, lr=config.lr, milestone=config.milestone, gamma=config.gamma, desc='Propensity model')
 
     return pi
 
@@ -161,7 +164,7 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark):
 
     # Evaluate over factual and counterfactual outcomes
     # E=1 is required for experimental sub-sample of NSW study
-    ate_hat = (YS_1_hat[E==1] - YS_0_hat[E==1]).mean()
+    ate_hat = YS_1_hat[E==1].mean() - YS_0_hat[E==1].mean()
     print(ate_hat)
 
     # # Simulate treatment policy
@@ -192,7 +195,7 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
 
     policy_risk_cutoffs = {}
 
-    for gamma in [-.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3]:
+    for gamma in [-.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
     
         # Simulate treatment policy
         pi = np.zeros_like(D)

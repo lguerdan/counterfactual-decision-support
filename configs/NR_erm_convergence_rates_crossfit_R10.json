@@ -1,22 +1,27 @@
 {
-    "benchmarks": [{
-        "name": "jobs",
-        "train_path": "data/JOBS/jobs_DW_bin.new.10.train.npz",
-        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz",
+    "benchmark": {
+        "name": "synthetic_1D_sinusoidal",
+        "NS": 1000,
+        "config": {
+            "Y0_PDF": "piecewise_sinusoid",
+            "Y1_PDF": "low_base_rate_sinusoid",
+            "PI_PDF": "linear"
+        },
         "policy_gamma": 0
-    }],
+    },
 
     "log_dir": "results",
 
-    "sample_sizes": [12994],
-    "learn_weights": false,
-    "learn_parameters": false,
-    "lr": 0.001,
-    "milestone": 20,
-    "gamma": 0.5,
-    "n_epochs": 25,
+    "sample_sizes": [5000, 10000, 20000, 30000, 40000, 50000, 60000],
+    "learn_weights": true,
+    "learn_parameters": true,
+    "n_epochs": 10,
     "n_runs": 10,
-    "target_POs": [0, 1],
+    "lr": 0.005,
+    "milestone": 10,
+    "gamma":0.1,
+    "target_POs": [0],
+    "policy_gamma": 0,
     "train_ratio": 0.7,
     "split_erm": true,
     "crossfit_erm": true,
@@ -47,61 +52,63 @@
             "alpha_1": 0,
             "beta_0": 0.0,
             "beta_1": 0
-        }],
-    "baselines": [{
+    }],
+    "baselines": [
+        {
             "model": "OBS",
             "target": "Y",
             "conditional": false,
             "sl": false,
             "reweight": false
-          },
-          {
+        },
+        {
             "model": "OBS Oracle",
             "target": "YS",
             "conditional": false,
             "sl": false,
             "reweight": false
-          },
-          {
+        },
+        {
             "model": "COM",
             "target": "Y",
             "conditional": true,
             "sl": false,
             "reweight": false
-          },
-          {
+        },
+        {
             "model": "COM-SL",
             "target": "Y",
             "conditional": true,
             "sl": true,
             "reweight": false
-          },
-          {
+        },
+        {
             "model": "RW",
             "target": "Y",
             "conditional": true,
             "sl": false,
             "reweight": true
-          },
-          {
+        },
+        {
             "model": "RW-SL",
             "target": "Y",
             "conditional": true,
             "sl": true,
             "reweight": true
-          },
-          {
+        },
+        {
             "model": "Proxy Oracle",
             "target": "Y",
             "conditional": true,
             "sl": false,
             "reweight": false
-          },
-          {
+        },
+        {
             "model": "Target Oracle",
             "target": "YS",
             "conditional": true,
             "sl": false,
             "reweight": false
-    }]
+        }
+    ]
 }

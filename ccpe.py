@@ -70,7 +70,8 @@ def ccpe(dataset, do, config):
 
     # Fit Y ~ X|T=t
     eta = MLP(n_feats=dataset.X_train.shape[1])
-    losses = train(eta, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, lr=config.lr, desc=f"CCPE: {do}")
+    losses = train(eta, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, lr=config.lr,
+        milestone=config.milestone, gamma=config.gamma, desc=f"CCPE: {do}")
     _, py_hat = evaluate(eta, test_loader)
     
     # Compute error parameters from predicted probabilities
