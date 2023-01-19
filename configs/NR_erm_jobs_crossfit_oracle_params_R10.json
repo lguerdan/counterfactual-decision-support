@@ -1,25 +1,20 @@
 {
-    "benchmark": {
-        "name": "synthetic_1D_sinusoidal",
-        "NS": 1000,
-        "config": {
-            "Y0_PDF": "piecewise_sinusoid",
-            "Y1_PDF": "low_base_rate_sinusoid",
-            "PI_PDF": "linear"
-        },
+    "benchmarks": [{
+        "name": "jobs",
+        "train_path": "data/JOBS/jobs_DW_bin.new.10.train.npz",
+        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz",
         "policy_gamma": 0
-    },
+    }],
 
     "log_dir": "results",
 
-    "sample_sizes": [10000, 20000, 30000, 40000, 50000],
+    "sample_sizes": [12994],
     "learn_weights": false,
     "learn_parameters": false,
+    "lr": 0.005,
     "n_epochs": 10,
     "n_runs": 10,
-    "lr": 0.005,
-    "target_POs": [0],
-    "policy_gamma": 0,
+    "target_POs": [0, 1],
     "train_ratio": 0.7,
     "split_erm": true,
     "crossfit_erm": true,
@@ -50,7 +45,7 @@
             "alpha_1": 0,
             "beta_0": 0.0,
             "beta_1": 0
-    }],
+        }],
     "baselines": [
         {
             "model": "OBS",

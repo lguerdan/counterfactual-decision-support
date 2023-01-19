@@ -31,7 +31,7 @@ def run_model_comparison(config, baselines, error_params, NS=None):
 
             # Use test data baesrate because D is experimentally assigned in test data
             loss_config = AttrDict({
-                'd_mean': Y_test['D'].mean(),
+                'd_mean': Y_test[Y_test['E'] == 1]['D'].mean(),
                 'reweight': baseline.reweight,
             })
             baseline.propensity_model = propensity_model if config.learn_weights else None
@@ -136,20 +136,16 @@ def compute_crossfit_metrics(crossfit_erm_preds, Y_test, n_splits, config, log_m
             po_metrics.append({**log_metadata, **po_result})
 
         if len(config.target_POs) == 2:
-            te_result = compute_treatment_metrics(po_preds, Y_test, config.benchmark.name, config.benchmark.policy_gamma)
+            te_result = compute_treatment_metrics(po_preds, Y_test, config.benchmark.name)
             te_metrics.append({**log_metadata, **te_result, 'baseline': baseline_name })
             
     return te_metrics, po_metrics
 
 
-def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
+def compute_treatment_metrics(po_preds, Y_test, benchmark):
 
     D, pD, E, YS_0, YS_1, YS = Y_test['D'],  Y_test['pD'], Y_test['E'], Y_test['YS_0'], Y_test['YS_1'], Y_test['YS']
-    YS_0_hat = po_preds[0]
-    YS_1_hat = po_preds[1]
-
-    # Below uses hard-coded values. Can also compute over sample via:
-    # ate = YS_1[(D==1) & (E==1)].mean() - YS_0[(D==0) & (E==1)].mean()
+    YS_0_hat, YS_1_hat = po_preds[0], po_preds[1]
 
     if 'synthetic' in benchmark:
         ate = YS_1.mean() - YS_0.mean()
@@ -165,27 +161,51 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark, policy_gamma=0):
 
     # Evaluate over factual and counterfactual outcomes
     # E=1 is required for experimental sub-sample of NSW study
-    ate_hat = (YS_1_hat[E==1] - YS_0_hat[E==1]).mean()
+    ate_hat = YS_1_hat[E==1].mean() - YS_0_hat[E==1].mean()
 
-    # Simulate treatment policy
-    pi = np.zeros_like(D)
-    pi[YS_1_hat-YS_0_hat < policy_gamma] = 1
+    # # Simulate treatment policy
+    # pi = np.zeros_like(D)
+    # pi[YS_1_hat-YS_0_hat < policy_gamma] = 1
 
-    # Compute propensities via ''ground truth'' treatment probabilities
-    inv_weights = pD.copy()
-    inv_weights[D==0] = 1-pD
-    inv_weights = 1 - inv_weights
+    # # Compute propensities via ''ground truth'' treatment probabilities
+    # inv_weights = pD.copy()
+    # inv_weights[D==0] = 1-pD
+    # inv_weights = 1 - inv_weights
 
-    # Compute policy risk
-    policy_risk_num = (YS * (pi == D) * inv_weights).sum()
-    policy_risk_demon = (pi == D).sum()
+    # # Compute policy risk
+    # policy_risk_num = (YS * (pi == D) * inv_weights).sum()
+    # policy_risk_demon = (pi == D).sum()
 
-    treatment_effect_metrics = {
+    policy_risk_metrics = compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D)
+
+    ate_metrics = {
         'ate': ate,
         'ate_hat': ate_hat,
-        'ate_error': abs(ate-ate_hat),
-        'policy_risk': policy_risk_num/policy_risk_demon
+        'ate_error': ate-ate_hat,
     }
     
-    return treatment_effect_metrics
+    return {**ate_metrics, **policy_risk_metrics}
+
+
+def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
+
+    policy_risk_cutoffs = {}
+
+    for gamma in [-.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3]:
     
+        # Simulate treatment policy
+        pi = np.zeros_like(D)
+        pi[YS_1_hat-YS_0_hat < gamma] = 1
+
+        # Compute propensities via ''ground truth'' treatment probabilities
+        inv_weights = pD.copy()
+        inv_weights[D==0] = 1-pD
+        inv_weights = 1 - inv_weights
+
+        # Compute policy risk
+        policy_risk_num = (YS * (pi == D) * inv_weights).sum()
+        policy_risk_demon = (pi == D).sum()
+
+        policy_risk_cutoffs[f'pr_{gamma}'] = policy_risk_num/policy_risk_demon
+
+    return policy_risk_cutoffs

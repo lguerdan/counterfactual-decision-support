@@ -52,6 +52,9 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.7, shuffle=T
         'E': E # Include for computign the ATT on JOBS test data
     }
     X, Y = pd.DataFrame(X), pd.DataFrame(dataset_y)
+    
+    # Normalize data
+    X = (X - X.mean(axis=0))/X.std(axis=0)
 
     if shuffle: 
         suffle_ix = permutation(X.index)
