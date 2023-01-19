@@ -161,7 +161,8 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark):
 
     # Evaluate over factual and counterfactual outcomes
     # E=1 is required for experimental sub-sample of NSW study
-    ate_hat = YS_1_hat[E==1].mean() - YS_0_hat[E==1].mean()
+    ate_hat = (YS_1_hat[E==1] - YS_0_hat[E==1]).mean()
+    print(ate_hat)
 
     # # Simulate treatment policy
     # pi = np.zeros_like(D)
