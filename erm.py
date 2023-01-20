@@ -60,7 +60,6 @@ def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
     po_preds = {}
 
     for do in exp_config.target_POs:
-
         loss_config.alpha = baseline_config.error_params_hat[f'alpha_{do}_hat'] if baseline_config.sl else None
         loss_config.beta = baseline_config.error_params_hat[f'beta_{do}_hat'] if baseline_config.sl else None
         loss_config.do = do
@@ -157,7 +156,8 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark):
         ate = 0.0158
 
     elif benchmark == 'jobs':
-        ate = 0.07794
+        # E[unemployment|program] - E[unemployment|no program]
+        ate = -0.0779
 
     else: 
         raise Exception("Invalid benchmark")

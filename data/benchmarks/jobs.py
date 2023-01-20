@@ -3,7 +3,7 @@ import pandas as pd
 from numpy.random import permutation
 
 
-def generate_jobs_data(benchmark_config, error_params, train_ratio=.7, shuffle=True):
+def generate_jobs_data(benchmark_config, error_params, train_ratio=.75, shuffle=True):
 
     with np.load(benchmark_config.train_path) as f:
         train_data = {key:f[key] for key in f}
@@ -56,15 +56,16 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.7, shuffle=T
     # Normalize data
     X = (X - X.mean(axis=0))/X.std(axis=0)
 
-    if shuffle: 
-        suffle_ix = permutation(X.index)
-        X = X.iloc[suffle_ix]
-        Y = Y.iloc[suffle_ix]
-    
+    # Always use the same held-out test split
     split_ix = int(X.shape[0]*train_ratio)
     X_train = X[:split_ix]
     X_test = X[split_ix:]
     Y_train = Y[:split_ix]
     Y_test = Y[split_ix:]
+
+    if shuffle: 
+        suffle_ix = permutation(X_train.index)
+        X_train = X_train.iloc[suffle_ix]
+        Y_train = Y_train.iloc[suffle_ix]
         
     return X_train, X_test, Y_train, Y_test

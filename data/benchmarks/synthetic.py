@@ -46,12 +46,36 @@ def eta(x, environment):
     #         lambda v: .5+.3*np.sin(8*v+.9)+.15*np.sin(10*v+.2)+.05*np.sin(30*v+.2),
     #         lambda v: np.power(v, 3)]).squeeze()
 
+    #NENV run
     elif environment=='piecewise_sinusoid':
         return np.piecewise(x,[
-            ((-1 <= x) & (x <= -.6428)),
-            ((-.6428 < x) & (x <= 1))], 
-            [lambda v: .4+.4*np.cos(9*v+5.5), 
-            lambda v: .5+.3*np.sin(8*v+.9)+.15*np.sin(10*v+.2)+.05*np.sin(30*v+.2)]).squeeze()
+            ((-1 <= x) & (x <= -.237)),
+            ((-.237 < x) & (x <= 1))], 
+            [lambda v: .4+.4*np.cos(9*v+4.4), 
+            lambda v: .546+.3*np.sin(8*v+.9)+.15*np.sin(10*v+.2)+.05*np.sin(30*v+.2)]).squeeze()
+
+    # elif environment=='piecewise_sinusoid':
+    #     return np.piecewise(x,[
+    #         ((-1 <= x) & (x <= -.176)),
+    #         ((-.176 < x) & (x <= 1))], 
+    #         [lambda v: .4+.4*np.cos(4*v-.6), 
+    #         lambda v: .582+.3*np.sin(3*v+.5)+.15*np.sin(2*v+.2)+.05*np.sin(12*v+.1)]).squeeze()
+
+    # elif environment=='piecewise_sinusoid':
+    #     return np.piecewise(x,[
+    #         ((-1 <= x) & (x <= 0.067)),
+    #         ((0.067 < x) & (x <= 1))], 
+    #         [lambda v: .4+.4*np.cos(6*v-4.4), 
+    #         lambda v: .563+.35*np.cos(5*v-10)+.1*np.cos(6*v-4)+.02*np.sin(18*v-1)]).squeeze()
+
+    # elif environment=='piecewise_sinusoid':
+    #     return np.piecewise(x,[
+    #         ((-1 <= x) & (x <= -.232)),
+    #         ((-.232 < x) & (x <= 1))], 
+    #         [lambda v: .45+.45*np.cos(6*v-4.7), 
+    #         lambda v: .6555+.3*np.cos(7*v-10)+.03*np.sin(10*v-3)+.04*np.sin(28*v-5)]).squeeze()
+
+
 
     elif environment=='low_base_rate_sinusoid':
         return (.5-.5 * np.sin(2.9*x+.1)).squeeze()
@@ -128,7 +152,6 @@ def generate_syn_data(env, error_params, NS, train_ratio=.7, shuffle=True):
     }
 
     X, Y = pd.DataFrame(x), pd.DataFrame(dataset_y)
-
     X = ((X - X.mean()) / math.sqrt(X.var()))
    
     if shuffle: 
