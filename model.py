@@ -15,13 +15,11 @@ class MLP(nn.Module):
         if n_feats > 5:
             # Use for experimental data
             self.layers = nn.Sequential(
-                nn.Linear(n_feats, 40),
+                nn.Linear(n_feats, 30),
                 nn.ReLU(),
-                nn.Linear(40, 20),
+                nn.Linear(30, 10),
                 nn.ReLU(),
-                nn.Linear(20, 4),
-                nn.ReLU(),
-                nn.Linear(4, 1),
+                nn.Linear(10, 1),
                 nn.Sigmoid()
             )
         else:

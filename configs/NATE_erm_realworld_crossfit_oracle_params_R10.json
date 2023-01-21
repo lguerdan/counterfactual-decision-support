@@ -12,7 +12,7 @@
   "learn_parameters": false,
   "lr": 0.001,
   "n_epochs": 15,
-  "n_runs": 1,
+  "n_runs": 10,
   "target_POs": [0, 1],
   "policy_gamma": 0,
   "milestone": 20,
