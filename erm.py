@@ -168,7 +168,7 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark):
     ate_hat = YS_1_hat[E==1].mean() - YS_0_hat[E==1].mean()
     print('ATE estimate: ', ate_hat)
 
-    policy_risk_metrics = compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D)
+    policy_risk_metrics = compute_policy_risk(YS[E==1], YS_1_hat[E==1], YS_0_hat[E==1], pD[E==1], D[E==1])
 
     ate_metrics = {
         'ate': ate,
@@ -183,7 +183,7 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
 
     policy_risk_cutoffs = {}
 
-    for gamma in [-.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
+    for gamma in [-.45, -4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
     
         # Simulate treatment policy
         pi = np.zeros_like(D)
@@ -193,7 +193,7 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
         inv_weights = np.zeros_like(D)
         inv_weights[D==1] = D.mean()
         inv_weights[D==0] = 1-D.mean()
-        inv_weights = 1/inv_weights
+        # inv_weights = 1/inv_weights
 
         # Compute policy risk
         # Ommit reweighting to match Johannason et al (for now). It is strange that
