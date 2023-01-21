@@ -138,6 +138,7 @@ def compute_crossfit_metrics(crossfit_erm_preds, Y_test, n_splits, config, log_m
             po_metrics.append({**log_metadata, **po_result})
 
         if len(config.target_POs) == 2:
+            print(f'Baseline: {baseline_name}')
             te_result = compute_treatment_metrics(po_preds, Y_test, config.benchmark.name)
             te_metrics.append({**log_metadata, **te_result, 'baseline': baseline_name })
             
@@ -165,20 +166,7 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark):
     # Evaluate over factual and counterfactual outcomes
     # E=1 is required for experimental sub-sample of NSW study
     ate_hat = YS_1_hat[E==1].mean() - YS_0_hat[E==1].mean()
-    print(ate_hat)
-
-    # # Simulate treatment policy
-    # pi = np.zeros_like(D)
-    # pi[YS_1_hat-YS_0_hat < policy_gamma] = 1
-
-    # # Compute propensities via ''ground truth'' treatment probabilities
-    # inv_weights = pD.copy()
-    # inv_weights[D==0] = 1-pD
-    # inv_weights = 1 - inv_weights
-
-    # # Compute policy risk
-    # policy_risk_num = (YS * (pi == D) * inv_weights).sum()
-    # policy_risk_demon = (pi == D).sum()
+    print('ATE estimate: ', ate_hat)
 
     policy_risk_metrics = compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D)
 
