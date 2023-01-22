@@ -80,6 +80,9 @@ def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
             lr=exp_config.lr, milestone=exp_config.milestone, gamma=exp_config.gamma, desc=f"ERM: {baseline_config.model}")
         val_metrics, py_hat = evaluate(eta_model, test_loader)        
         po_preds[do] = py_hat
+
+        print(f'Train loss: {losses}')
+        print(f"Val loss: {val_metrics['loss']}")
     
     return po_preds, val_metrics
 

@@ -13,15 +13,28 @@ class MLP(nn.Module):
         super().__init__()
 
         if n_feats > 5:
-            # Use for experimental data
+            # # Use for experimental data
+            # self.layers = nn.Sequential(
+            #     nn.Linear(n_feats, 30),
+            #     nn.ReLU(),
+            #     nn.Linear(30, 10),
+            #     nn.ReLU(),
+            #     nn.Linear(10, 1),
+            #     nn.Sigmoid()
+            # )
+            
+            # Use for JOBS data
             self.layers = nn.Sequential(
-                nn.Linear(n_feats, 30),
+                nn.Linear(n_feats, 40),
                 nn.ReLU(),
-                nn.Linear(30, 10),
+                nn.Linear(40, 20),
                 nn.ReLU(),
-                nn.Linear(10, 1),
+                nn.Linear(20, 20),
+                nn.ReLU(),
+                nn.Linear(20, 1),
                 nn.Sigmoid()
             )
+
         else:
             # Use for synthetic data
             self.layers = nn.Sequential(
