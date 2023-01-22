@@ -80,9 +80,6 @@ def run_erm_split(erm_dataset, baseline_config, loss_config, exp_config):
             lr=exp_config.lr, milestone=exp_config.milestone, gamma=exp_config.gamma, desc=f"ERM: {baseline_config.model}")
         val_metrics, py_hat = evaluate(eta_model, test_loader)        
         po_preds[do] = py_hat
-
-        print(f'Train loss: {losses}')
-        print(f"Val loss: {val_metrics['loss']}")
     
     return po_preds, val_metrics
 
@@ -196,13 +193,10 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
         inv_weights = np.zeros_like(D)
         inv_weights[D==1] = D.mean()
         inv_weights[D==0] = 1-D.mean()
-        # inv_weights = 1/inv_weights
+        inv_weights = 1/inv_weights
 
         # Compute policy risk
-        # Ommit reweighting to match Johannason et al (for now). It is strange that
-        # matching their plot with accet/reject baserates requires removing re-weighting
-        # given that treatment probabilities are not .5
-        policy_risk_num = (YS[pi == D]).sum()
+        policy_risk_num = (YS[pi == D]*inv_weights[pi == D]).sum()
         policy_risk_demon = (pi == D).sum()
 
         policy_risk_cutoffs[f'pr_{gamma}'] = policy_risk_num/policy_risk_demon
