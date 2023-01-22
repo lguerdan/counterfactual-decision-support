@@ -23,20 +23,20 @@ class MLP(nn.Module):
             #     nn.Sigmoid()
             # )
             
-            # Use for JOBS data
+            # JOBS model
             self.layers = nn.Sequential(
                 nn.Linear(n_feats, 40),
                 nn.ReLU(),
                 nn.Linear(40, 20),
                 nn.ReLU(),
-                nn.Linear(20, 20),
+                nn.Linear(20, 4),
                 nn.ReLU(),
-                nn.Linear(20, 1),
+                nn.Linear(4, 1),
                 nn.Sigmoid()
             )
 
         else:
-            # Use for synthetic data
+            # Synthetic data model
             self.layers = nn.Sequential(
                 nn.Linear(n_feats, 40),
                 nn.Tanh(),

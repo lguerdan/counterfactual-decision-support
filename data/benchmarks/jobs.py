@@ -61,11 +61,18 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.75, shuffle=
         X = X.iloc[suffle_ix]
         Y = Y.iloc[suffle_ix]
 
-    # Always use the same held-out test split
-    split_ix = int(X.shape[0]*train_ratio)
-    X_train = X[:split_ix]
-    X_test = X[split_ix:]
-    Y_train = Y[:split_ix]
-    Y_test = Y[split_ix:]
-        
+    rand_Y = Y[Y['E'] == 1]
+    obs_Y = Y[Y['E'] == 0]
+    rand_X = X[Y['E'] == 1]
+    obs_X = X[Y['E'] == 0]
+
+    split_ix = int(rand_Y.shape[0]*.5)
+    X_train = rand_X[:split_ix]
+    X_test = rand_X[split_ix:]
+    Y_train = rand_Y[:split_ix]
+    Y_test = rand_Y[split_ix:]
+
+    X_train = pd.concat([X_train, obs_X])
+    Y_train = pd.concat([Y_train, obs_Y])
+
     return X_train, X_test, Y_train, Y_test
