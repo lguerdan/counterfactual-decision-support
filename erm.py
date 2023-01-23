@@ -185,7 +185,7 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
 
     policy_risk_cutoffs = {}
 
-    for gamma in [-.45, -4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
+    for gamma in [-.45, -.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
     
         # Simulate treatment policy
         pi = np.zeros_like(D)
