@@ -29,12 +29,11 @@ class MLP(nn.Module):
                 nn.ReLU(),
                 nn.Linear(40, 20),
                 nn.ReLU(),
-                nn.Linear(20, 4),
+                nn.Linear(20, 10),
                 nn.ReLU(),
-                nn.Linear(4, 1),
+                nn.Linear(10, 1),
                 nn.Sigmoid()
             )
-
         else:
             # Synthetic data model
             self.layers = nn.Sequential(
