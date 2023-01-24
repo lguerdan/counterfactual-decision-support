@@ -34,8 +34,8 @@ def preprocess_dataset(out_file):
     health_history.loc[:, 'new_chronic_condition'] = new_condition
 
     # Below federal poverty limit as (selection variable)
-    survey_12m['below_federal_pov'] = (survey_12m['hhinc_pctfpl_12m'] < 100).astype(int)
-    survey_12m = survey_12m[['person_id', 'below_federal_pov']]
+    survey_12m['above_federal_pov'] = (survey_12m['hhinc_pctfpl_12m'] < 100).astype(int)
+    survey_12m = survey_12m[['person_id', 'above_federal_pov']]
 
     tables = [descriptive_stats, state_programs, ed_visits, health_history, survey_12m]
 

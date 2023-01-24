@@ -185,7 +185,7 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
 
     policy_risk_cutoffs = {}
 
-    for gamma in [-.45, -.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
+    for gamma in [-.6, -.55, -.5, -.45, -.4, -.35, -.3, -.25, -.2, -.15, -.1, -.05, 0, .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6]:
     
         # Simulate treatment policy
         pi = np.zeros_like(D)
@@ -198,9 +198,11 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
         inv_weights = 1/inv_weights
 
         # Compute policy risk
-        policy_risk_num = (YS[pi == D]*inv_weights[pi == D]).sum()
+        policy_risk_num_w = (YS[pi == D]*inv_weights[pi == D]).sum()
+        policy_risk_num = (YS[pi == D]).sum()
         policy_risk_demon = (pi == D).sum()
 
+        policy_risk_cutoffs[f'prw_{gamma}'] = policy_risk_num_w/policy_risk_demon
         policy_risk_cutoffs[f'pr_{gamma}'] = policy_risk_num/policy_risk_demon
 
     return policy_risk_cutoffs

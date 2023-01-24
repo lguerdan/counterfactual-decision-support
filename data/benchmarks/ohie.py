@@ -61,8 +61,8 @@ def generate_ohie_data(OHIE_PATH, error_params, train_ratio=.7, shuffle=True):
     Y_train = Y[:split_ix]
     Y_test = Y[split_ix:]
 
-    # selection bias: medicare opportunity only provided to individuals above the federal poverty line
-    X_train[(Y_train['D'] == 1) & (X_train['below_federal_pov'] == 0)]
-    Y_train[(Y_train['D'] == 1) & (X_train['below_federal_pov'] == 0)]
+    #Selection bias: medicare opportunity not provided to individuals above the federal poverty line
+    X_train = X_train[(Y_train['D'] == 0) | ((Y_train['D'] == 1) & (X_train['above_federal_pov'] == 0))]
+    Y_train = Y_train[(Y_train['D'] == 0) | ((Y_train['D'] == 1) & (X_train['above_federal_pov'] == 0))]  
 
     return X_train, X_test, Y_train, Y_test

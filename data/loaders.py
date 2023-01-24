@@ -20,14 +20,13 @@ def get_splits(X_train, X_test, Y_train, Y_test, config):
     N_train = X_train.shape[0]
     
     if not config.split_erm:
-        dataset = AttrDict({
-            'X_train': X_train,
-            'X_test': X_test,
-            'Y_train': Y_train,
-            'Y_test': Y_test
-        })
-        return [dataset, dataset, dataset]
-    
+        return [AttrDict({
+            'X_train': X_train.copy(deep=True),
+            'X_test': X_test.copy(deep=True),
+            'Y_train': Y_train.copy(deep=True),
+            'Y_test': Y_test.copy(deep=True)
+        }) for i in range(3)]
+        
     else:
         split_ix_1, split_ix_2 = int(.33*N_train), int(.66*N_train)
 
@@ -72,8 +71,8 @@ def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
     pD_test = YCF_test['pD'].to_numpy()[:, None]
     D_test = YCF_test['D'].to_numpy()[:, None]
 
-    print(Y_test.shape)
-    print(Y_train.shape)
+    print('Test shape: ', Y_test.shape)
+    print('Train shape: ', Y_train.shape)
     
     train_data = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.Tensor(Y_train), torch.Tensor(pD_train), torch.Tensor(D_train))
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)
