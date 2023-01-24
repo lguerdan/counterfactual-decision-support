@@ -10,7 +10,6 @@ def generate_ohie_data(OHIE_PATH, error_params, train_ratio=.7, shuffle=True):
     YS = ohie_df[['Y']].squeeze()
     D = ohie_df[['D']].squeeze()
     ohie_df.drop(columns=['Y', 'D'], inplace=True)
-    ohie_df = (ohie_df - ohie_df.mean(axis=0))/ohie_df.std(axis=0)
 
     YS_0 = np.zeros_like(YS)
     YS_1 = np.zeros_like(YS)
@@ -62,7 +61,14 @@ def generate_ohie_data(OHIE_PATH, error_params, train_ratio=.7, shuffle=True):
     Y_test = Y[split_ix:]
 
     #Selection bias: medicare opportunity not provided to individuals above the federal poverty line
-    X_train = X_train[(Y_train['D'] == 0) | ((Y_train['D'] == 1) & (X_train['above_federal_pov'] == 0))]
-    Y_train = Y_train[(Y_train['D'] == 0) | ((Y_train['D'] == 1) & (X_train['above_federal_pov'] == 0))]  
+    X_train_s = X_train[(Y_train['D'].to_numpy() == 0) |
+        ((Y_train['D'].to_numpy() == 1) & (X_train['above_federal_pov'].to_numpy() == 0))]
 
-    return X_train, X_test, Y_train, Y_test
+    Y_train_s = Y_train[(Y_train['D'] == 0).to_numpy() | 
+        ((Y_train['D'] == 1).to_numpy() & (X_train['above_federal_pov'] == 0).to_numpy())]  
+
+
+    X_train_s = (X_train_s - X_train_s.mean(axis=0))/X_train_s.std(axis=0)
+    X_test = (X_test - X_train_s.mean(axis=0))/X_train_s.std(axis=0)
+
+    return X_train_s, X_test, Y_train_s, Y_test

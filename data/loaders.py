@@ -55,6 +55,11 @@ def get_splits(X_train, X_test, Y_train, Y_test, config):
 
 def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
 
+    X_train = X_train.copy(deep=True)
+    YCF_train = YCF_train.copy(deep=True)
+    X_test = X_test.copy(deep=True)
+    YCF_test = YCF_test.copy(deep=True)
+
     if conditional:
         X_train = X_train[YCF_train['D']==do]
         YCF_train = YCF_train[YCF_train['D']==do]

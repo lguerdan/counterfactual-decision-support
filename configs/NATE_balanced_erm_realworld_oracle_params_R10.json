@@ -30,6 +30,27 @@
   ],
   "baselines": [
     {
+      "model": "OBS",
+      "target": "Y",
+      "conditional": false,
+      "sl": false,
+      "reweight": false
+    },
+    {
+      "model": "OBS Oracle",
+      "target": "YS",
+      "conditional": false,
+      "sl": false,
+      "reweight": false
+    },
+    {
+      "model": "COM",
+      "target": "Y",
+      "conditional": true,
+      "sl": false,
+      "reweight": false
+    },
+    {
       "model": "COM-SL",
       "target": "Y",
       "conditional": true,
@@ -49,6 +70,20 @@
       "conditional": true,
       "sl": true,
       "reweight": true
+    },
+    {
+      "model": "Proxy Oracle",
+      "target": "Y",
+      "conditional": true,
+      "sl": false,
+      "reweight": false
+    },
+    {
+      "model": "Target Oracle",
+      "target": "YS",
+      "conditional": true,
+      "sl": false,
+      "reweight": false
     }
   ]
 }
