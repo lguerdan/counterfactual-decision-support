@@ -192,8 +192,7 @@ def compute_policy_risk(YS, YS_1_hat, YS_0_hat, pD, D):
         pi[YS_1_hat-YS_0_hat < gamma] = 1
 
         # Compute propensities via ''ground truth'' treatment probabilities
-        inv_weights = np.zeros_like(D)
-        inv_weights[D==1] = D.mean()
+        inv_weights = D.mean() * np.ones_like(D)
         inv_weights[D==0] = 1-D.mean()
         inv_weights = 1/inv_weights
 
