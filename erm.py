@@ -22,6 +22,14 @@ def run_model_comparison(config, baselines, error_params, NS=None):
         data_splits = loader.get_splits(X_train, X_test, Y_train, Y_test, config)
         weight_dataset, ccpe_dataset, erm_dataset = data_splits[p], data_splits[q], data_splits[r]
 
+        print(weight_dataset.Y_train['D'].mean())
+        print(weight_dataset.Y_test['D'].mean())
+        print(ccpe_dataset.Y_train['D'].mean())
+        print(ccpe_dataset.Y_test['D'].mean())
+        print(erm_dataset.Y_train['D'].mean())
+        print(erm_dataset.Y_test['D'].mean())
+        
+
         if config.learn_weights:
             propensity_model = learn_weights(weight_dataset, config)
 

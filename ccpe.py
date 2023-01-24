@@ -2,6 +2,7 @@ from attrdict import AttrDict
 
 from data import loaders
 from model import *
+from numpy.random import permutation
 
 
 ###########################################################
@@ -24,21 +25,20 @@ def learn_parameters(ccpe_dataset, config, true_params):
 def crossfit_ccpe(ccpe_dataset, do, config):
 
     X_train, Y_train = ccpe_dataset['X_train'], ccpe_dataset['Y_train']
+
+    shuffle_ix = permutation(Y_train.reset_index().index)
+    X_train = X_train.iloc[shuffle_ix]
+    Y_train = Y_train.iloc[shuffle_ix]
+
     split_ix = int(X_train.shape[0]*.7)
 
     ccpe_split_1 = AttrDict({
-        'X_train': X_train.iloc[split_ix:, :],
-        'Y_train': Y_train.iloc[split_ix:, :],
-        'X_test': X_train.iloc[:split_ix, :],
-        'Y_test': Y_train.iloc[:split_ix, :],
+        'X_train': X_train[:split_ix],
+        'Y_train': Y_train[:split_ix],
+        'X_test': X_train[split_ix:],
+        'Y_test': Y_train[split_ix:],
     })
 
-    # ccpe_split_2 = AttrDict({
-    #     'X_train': X_train.iloc[:split_ix, :],
-    #     'Y_train': Y_train.iloc[:split_ix, :],
-    #     'X_test': X_train.iloc[split_ix:, :],
-    #     'Y_test': Y_train.iloc[split_ix:, :],
-    # })
 
     _, alpha_1_hat, beta_1_hat = ccpe(ccpe_split_1, do, config)
     # _, alpha_2_hat, beta_2_hat = ccpe(ccpe_split_2, do, config)
@@ -57,6 +57,9 @@ def ccpe(dataset, do, config):
         'do': do,
         'reweight': False
     })
+
+    print('Inside CCPE: ', dataset.Y_train['D'].mean())
+    print('Inside CCPE: ', dataset.Y_test['D'].mean())
 
     train_loader, test_loader = loaders.get_loaders(
         X_train=dataset.X_train,
