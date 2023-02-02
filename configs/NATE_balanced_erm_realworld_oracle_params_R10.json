@@ -7,7 +7,7 @@
   }],
   "log_dir": "results",
   "sample_sizes": [12994],
-  "learn_weights": false,
+  "learn_weights": true,
   "learn_parameters": false,
   "lr": 0.001,
   "n_epochs": 20,

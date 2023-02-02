@@ -19,6 +19,7 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.75, shuffle=
 
     YS_0 = np.zeros_like(YS)
     YS_1 = np.zeros_like(YS)
+    
     YS_0[D==0] = YS[D==0]
     YS_1[D==1] = YS[D==1]
 
