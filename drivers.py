@@ -77,6 +77,40 @@ def run_benchmark_risk_minimization_exp(config, baselines, param_configs, exp_na
 
     return po_df, te_df
 
+def run_param_assumption_risk_minimization_exp(config, baselines, param_configs, exp_name):
+    '''
+        Run each error parameter configuration over each benchmark environment. Keep sample size fixed. 
+    '''
+
+    exp_path = f'{config.log_dir}/{exp_name}/'
+    utils.write_file(json.dumps(config), exp_path, f'config.json')
+
+    for error_params in param_configs:
+        te_results = []
+        po_results = []
+        
+        for benchmark in config.benchmarks:
+            config.benchmark = benchmark
+
+            for identification_pair in config.assumptions:
+                config.identification_pair = identification_pair
+               
+                for run_num in range(config.n_runs):
+                
+                    print('===============================================================================================================')
+                    print(f"Benchmark: {config.benchmark.name}, RUN: {run_num}, alpha_0: {error_params.alpha_0}, alpha_1: {error_params.alpha_1}, beta_0: {error_params.beta_0}, beta_1: {error_params.beta_1}")
+                    print('=============================================================================================================== \n')
+
+                    te_baseline_metrics, po_baseline_metrics = erm.run_model_comparison(config, baselines, error_params)
+                    te_results.extend(te_baseline_metrics)
+                    po_results.extend(po_baseline_metrics)
+
+        po_df, te_df = pd.DataFrame(po_results), pd.DataFrame(te_results)
+        utils.write_file(po_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_alpha={error_params.alpha_0}_beta={error_params.beta_0}_PO.csv')
+        utils.write_file(te_df, exp_path, f'runs={config.n_runs}_epochs={config.n_epochs}_alpha={error_params.alpha_0}_beta={error_params.beta_0}_TE.csv')
+
+    return po_df, te_df
+
 def run_risk_minimization_exp(config, baselines, param_configs, exp_name):
     '''
         Vary sample size for synthetic benchmark environment. 
@@ -130,7 +164,7 @@ def run_ccpe_exp(config, error_param_configs, sample_sizes, do=0):
                     'Y_test': Y[split_ix:]
                 }
 
-                alpha_hat, beta_hat = ccpe(dataset, do, config)
+                alpha_hat, beta_hat = ccpe_multiestimate(dataset, do, config)
 
                 results.append({
                     'NS': NS,
@@ -163,3 +197,6 @@ if __name__ == '__main__':
 
     if exp_type == 'erm_experimental':
         run_benchmark_risk_minimization_exp(config, config.baselines, config.error_params, exp_name)
+
+    if exp_type == 'erm_experimental_assumption':
+        run_param_assumption_risk_minimization_exp(config, config.baselines, config.error_params, exp_name)

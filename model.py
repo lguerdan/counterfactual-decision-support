@@ -23,7 +23,19 @@ class MLP(nn.Module):
             #     nn.Sigmoid()
             # )
             
-            # JOBS model
+            # JOBS model (also works well)
+            # self.layers = nn.Sequential(
+            #     nn.Linear(n_feats, 40),
+            #     nn.ReLU(),
+            #     nn.Linear(40, 30),
+            #     nn.ReLU(),
+            #     nn.Linear(30, 10),
+            #     nn.ReLU(),
+            #     nn.Linear(10, 1),
+            #     nn.Sigmoid()
+            # )
+
+            # JOBS model (main results)
             self.layers = nn.Sequential(
                 nn.Linear(n_feats, 40),
                 nn.ReLU(),

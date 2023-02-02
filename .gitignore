@@ -9,3 +9,5 @@ results/*
 *.dta
 *.png
 data/HEALTH
+*.key
+*.zip

@@ -7,7 +7,6 @@ from model import *
 
 def run_model_comparison(config, baselines, error_params, NS=None):
 
-    # TODO: load_benchmark should insert environment-specific selection bias only to X_train/Y_train
     X_train, X_test, Y_train, Y_test = loader.get_benchmark(config.benchmark, error_params, NS)
 
     crossfit_erm_preds = { baseline.model: {} for baseline in baselines }
@@ -21,14 +20,6 @@ def run_model_comparison(config, baselines, error_params, NS=None):
 
         data_splits = loader.get_splits(X_train, X_test, Y_train, Y_test, config)
         weight_dataset, ccpe_dataset, erm_dataset = data_splits[p], data_splits[q], data_splits[r]
-
-        print(weight_dataset.Y_train['D'].mean())
-        print(weight_dataset.Y_test['D'].mean())
-        print(ccpe_dataset.Y_train['D'].mean())
-        print(ccpe_dataset.Y_test['D'].mean())
-        print(erm_dataset.Y_train['D'].mean())
-        print(erm_dataset.Y_test['D'].mean())
-        
 
         if config.learn_weights:
             propensity_model = learn_weights(weight_dataset, config)
@@ -55,6 +46,7 @@ def run_model_comparison(config, baselines, error_params, NS=None):
 
     log_metadata = AttrDict({**error_params, **error_params_hat})
     log_metadata.benchmark = config.benchmark.name
+    log_metadata.assumption = config.identification_pair
     log_metadata.NS = NS
     log_metadata.val_loss = metrics.loss
     return compute_crossfit_metrics(crossfit_erm_preds, Y_test, len(split_permuations), config, log_metadata)
