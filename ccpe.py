@@ -129,13 +129,16 @@ def ccpe_multiestimate(dataset, do,  true_params, config):
 
     else:
         raise Exception("Invalid param setting")
-
+    
+    print('===========================================')
     print(f'Error setting: {config.identification_pair}')
     print(f'Alpha hat: {alpha_hat}')
     print(f'Beta hat: {beta_hat}')
 
     print(f'Alpha: { true_params[f"alpha_{do}"]}')
     print(f'Beta: { true_params[f"beta_{do}"]}')
+    print(f'Outcome baserate: {E_YS}')
+    print('===========================================')
 
     return py_hat, alpha_hat, beta_hat
 
