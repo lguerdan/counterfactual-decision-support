@@ -155,9 +155,6 @@ def ccpe(dataset, do, config):
         'reweight': False
     })
 
-    print('Inside CCPE: ', dataset.Y_train['D'].mean())
-    print('Inside CCPE: ', dataset.Y_test['D'].mean())
-
     train_loader, test_loader = loaders.get_loaders(
         X_train=dataset.X_train,
         YCF_train=dataset.Y_train,
