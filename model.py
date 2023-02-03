@@ -13,30 +13,30 @@ class MLP(nn.Module):
         super().__init__()
 
         if n_feats > 5:
-                        
-            # JOBS model (also works well)
-            # self.layers = nn.Sequential(
-            #     nn.Linear(n_feats, 40),
-            #     nn.ReLU(),
-            #     nn.Linear(40, 30),
-            #     nn.ReLU(),
-            #     nn.Linear(30, 10),
-            #     nn.ReLU(),
-            #     nn.Linear(10, 1),
-            #     nn.Sigmoid()
-            # )
 
-            # JOBS model (main results)
+            # JOBS model (also works well)
             self.layers = nn.Sequential(
                 nn.Linear(n_feats, 40),
                 nn.ReLU(),
-                nn.Linear(40, 20),
+                nn.Linear(40, 30),
                 nn.ReLU(),
-                nn.Linear(20, 10),
+                nn.Linear(30, 10),
                 nn.ReLU(),
                 nn.Linear(10, 1),
                 nn.Sigmoid()
             )
+
+            # JOBS model (main results)
+            # self.layers = nn.Sequential(
+            #     nn.Linear(n_feats, 40),
+            #     nn.ReLU(),
+            #     nn.Linear(40, 20),
+            #     nn.ReLU(),
+            #     nn.Linear(20, 10),
+            #     nn.ReLU(),
+            #     nn.Linear(10, 1),
+            #     nn.Sigmoid()
+            # )
         else:
             # Synthetic data model
             self.layers = nn.Sequential(

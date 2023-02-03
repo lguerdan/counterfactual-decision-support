@@ -7,6 +7,9 @@ import os, sys, torch, json
 import ccpe, erm, model, utils
 from data.benchmarks import synthetic, ohie, jobs
 
+import random
+random.seed(10)
+np.random.seed(10)
 
 def run_hyperparam_exp(config, baselines, error_params, exp_name):
     '''

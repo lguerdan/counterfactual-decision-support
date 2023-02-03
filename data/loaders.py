@@ -76,12 +76,13 @@ def get_loaders(X_train, YCF_train, X_test, YCF_test, target, do, conditional):
     pD_test = YCF_test['pD'].to_numpy()[:, None]
     D_test = YCF_test['D'].to_numpy()[:, None]
 
-    # print('****** Data info ********')
-    # print('Test shape: ', Y_test.shape)
-    # print('Train shape: ', Y_train.shape)
-    # print('E[Y] train: ', Y_train.mean())
-    # print('E[Y] test: ', Y_test.mean())
-    # print('**************************')
+    print('****** Data info ********')
+    print(f'DO: {do}')
+    print('N Test: ', Y_test.shape[0])
+    print('N Train: ', Y_train.shape[0])
+    print('N[Y] train: ', Y_train.sum())
+    print('N[Y] test: ', Y_test.sum())
+    print('**************************')
     
     train_data = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.Tensor(Y_train), torch.Tensor(pD_train), torch.Tensor(D_train))
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, num_workers=1)

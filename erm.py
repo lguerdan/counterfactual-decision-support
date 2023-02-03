@@ -167,8 +167,8 @@ def compute_treatment_metrics(po_preds, Y_test, benchmark):
     # E=1 is required for experimental sub-sample of NSW study
     ate_hat = YS_1_hat[E==1].mean() - YS_0_hat[E==1].mean()
     print('ATE estimate: ', ate_hat)
-    print(f'Y0: {YS_0[(E==1) & (D==0)].mean():.2}, Y0 hat: {YS_0_hat[E==1].mean():.2}')
-    print(f'Y1: {YS_1[(E==1) & (D==1)].mean():.2}, Y1 hat: {YS_1_hat[E==1].mean():.2}')
+    print(f'Y0: {YS_0[(E==1) & (D==0)].mean():.4}, Y0 hat: {YS_0_hat[E==1].mean():.4}')
+    print(f'Y1: {YS_1[(E==1) & (D==1)].mean():.4}, Y1 hat: {YS_1_hat[E==1].mean():.4}')
     
     policy_risk_metrics = compute_policy_risk(YS[E==1], YS_1_hat[E==1], YS_0_hat[E==1], pD[E==1], D[E==1])
 
