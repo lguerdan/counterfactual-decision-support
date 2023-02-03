@@ -1,13 +1,14 @@
 {
     "benchmarks": [{
-      "name": "ohie",
-      "path": "data/OHIE/ohie_data.csv",
-      "policy_gamma": 0.0158
+        "name": "jobs",
+        "train_path": "data/JOBS/jobs_DW_bin.new.10.train.npz",
+        "test_path": "data/JOBS/jobs_DW_bin.new.10.test.npz",
+        "policy_gamma": 0
     }],
     "log_dir": "results",
     "sample_sizes": [12994],
     "learn_weights": true,
-    "learn_parameters": false,
+    "learn_parameters": true,
     "lr": 0.001,
     "n_epochs": 20,
     "n_runs": 10,
@@ -20,6 +21,7 @@
     "crossfit_erm": false,
     "split_ccpe": false,
     "crossfit_ccpe": false,
+    "assumptions": ["weak_seperability", "baserate_min_anchor", "baserate_max_anchor", "beta_min_anchor"],
     "error_params": [
       { "alpha_0": 0.0, "alpha_1": 0, "beta_0": 0.4, "beta_1": 0 },
       { "alpha_0": 0.1, "alpha_1": 0, "beta_0": 0.3, "beta_1": 0 },
@@ -28,27 +30,6 @@
       { "alpha_0": 0.4, "alpha_1": 0, "beta_0": 0.0, "beta_1": 0 }
     ],
     "baselines": [
-      {
-        "model": "OBS",
-        "target": "Y",
-        "conditional": false,
-        "sl": false,
-        "reweight": false
-      },
-      {
-        "model": "OBS Oracle",
-        "target": "YS",
-        "conditional": false,
-        "sl": false,
-        "reweight": false
-      },
-      {
-        "model": "COM",
-        "target": "Y",
-        "conditional": true,
-        "sl": false,
-        "reweight": false
-      },
       {
         "model": "COM-SL",
         "target": "Y",
@@ -62,13 +43,6 @@
         "conditional": true,
         "sl": true,
         "reweight": true
-      },
-      {
-        "model": "Target Oracle",
-        "target": "YS",
-        "conditional": true,
-        "sl": false,
-        "reweight": false
       }
     ]
   }
