@@ -19,7 +19,7 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.75, shuffle=
 
     YS_0 = np.zeros_like(YS)
     YS_1 = np.zeros_like(YS)
-    
+
     YS_0[D==0] = YS[D==0]
     YS_1[D==1] = YS[D==1]
 
@@ -67,7 +67,7 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.75, shuffle=
     rand_X = X[Y['E'] == 1]
     obs_X = X[Y['E'] == 0]
 
-    split_ix = int(rand_Y.shape[0]*.5)
+    split_ix = int(rand_Y.shape[0]*.7)
     X_train = rand_X[:split_ix]
     X_test = rand_X[split_ix:]
     Y_train = rand_Y[:split_ix]
