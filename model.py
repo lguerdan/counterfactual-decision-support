@@ -12,9 +12,24 @@ class MLP(nn.Module):
     def __init__(self, n_feats):
         super().__init__()
 
-        if n_feats > 5:
+        if n_feats > 50:
+            print('OHIE model')
+            # OHIE model
+            self.layers = nn.Sequential(
+                nn.Linear(n_feats, 40),
+                nn.ReLU(),
+                nn.Linear(40, 30),
+                nn.ReLU(),
+                nn.Linear(30, 10),
+                nn.ReLU(),
+                nn.Linear(10, 1),
+                nn.Sigmoid()
+            )
 
-            # JOBS model (also works well)
+        elif n_feats > 5:
+            print('JOBS model')
+
+            # JOBS model
             self.layers = nn.Sequential(
                 nn.Linear(n_feats, 40),
                 nn.ReLU(),
@@ -38,7 +53,8 @@ class MLP(nn.Module):
             #     nn.Sigmoid()
             # )
         else:
-            # Synthetic data model
+
+            # Synthetic model
             self.layers = nn.Sequential(
                 nn.Linear(n_feats, 40),
                 nn.Tanh(),
