@@ -16,9 +16,9 @@ class MLP(nn.Module):
 
             # OHIE model
             self.layers = nn.Sequential(
-                nn.Linear(n_feats, 40),
+                nn.Linear(n_feats, 50),
                 nn.ReLU(),
-                nn.Linear(40, 30),
+                nn.Linear(50, 30),
                 nn.ReLU(),
                 nn.Linear(30, 10),
                 nn.ReLU(),

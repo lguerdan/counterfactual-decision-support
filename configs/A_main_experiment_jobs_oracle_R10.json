@@ -28,63 +28,42 @@
       { "alpha_0": 0.3, "alpha_1": 0, "beta_0": 0.1, "beta_1": 0 },
       { "alpha_0": 0.4, "alpha_1": 0, "beta_0": 0.0, "beta_1": 0 }
     ],
-    "baselines": [
-      {
-        "model": "OBS",
-        "target": "Y",
-        "conditional": false,
-        "sl": false,
-        "reweight": false
-      },
-      {
-        "model": "OBS Oracle",
-        "target": "YS",
-        "conditional": false,
-        "sl": false,
-        "reweight": false
-      },
-      {
-        "model": "COM",
-        "target": "Y",
-        "conditional": true,
-        "sl": false,
-        "reweight": false
-      },
-      {
-        "model": "COM-SL",
-        "target": "Y",
-        "conditional": true,
-        "sl": true,
-        "reweight": false
-      },
-      {
-        "model": "RW",
-        "target": "Y",
-        "conditional": true,
-        "sl": false,
-        "reweight": true
-      },
-      {
-        "model": "RW-SL",
-        "target": "Y",
-        "conditional": true,
-        "sl": true,
-        "reweight": true
-      },
-      {
-        "model": "Proxy Oracle",
-        "target": "Y",
-        "conditional": true,
-        "sl": false,
-        "reweight": false
-      },
-      {
-        "model": "Target Oracle",
-        "target": "YS",
-        "conditional": true,
-        "sl": false,
-        "reweight": false
-      }
-    ]
+    "baselines": [{
+            "model": "OBS",
+            "target": "Y",
+            "conditional": false,
+            "sl": false,
+            "reweight": false
+        },{
+            "model": "OBS Oracle",
+            "target": "YS",
+            "conditional": false,
+            "sl": false,
+            "reweight": false
+        },{
+            "model": "COM",
+            "target": "Y",
+            "conditional": true,
+            "sl": false,
+            "reweight": false
+        },{
+            "model": "COM-SL",
+            "target": "Y",
+            "conditional": true,
+            "sl": true,
+            "reweight": false
+        },{
+            "model": "RW-SL",
+            "target": "Y",
+            "conditional": true,
+            "sl": true,
+            "reweight": true
+        },{
+            "model": "Target Oracle",
+            "target": "YS",
+            "conditional": true,
+            "sl": false,
+            "reweight": false
+    }]
   }
   

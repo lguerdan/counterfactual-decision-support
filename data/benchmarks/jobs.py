@@ -26,16 +26,16 @@ def generate_jobs_data(benchmark_config, error_params, train_ratio=.75, shuffle=
     Y_0 = YS_0.copy()
     Y_1 = YS_1.copy()
     Y = np.zeros_like(YS)
+    
+    alpha_0_errors = ((Y_0 == 0) & np.random.binomial(1, error_params['alpha_0'], size=YS.shape[0]))
+    alpha_1_errors = ((Y_1 == 0) & np.random.binomial(1, error_params['alpha_1'], size=YS.shape[0]))
+    beta_0_errors = ((Y_0 == 1) & np.random.binomial(1, error_params['beta_0'], size=YS.shape[0]))
+    beta_1_errors = ((Y_1 == 1) & np.random.binomial(1, error_params['beta_1'], size=YS.shape[0]))
 
-    alpha_0_errors = np.random.binomial(1, error_params['alpha_0'], size=YS.shape[0])
-    alpha_1_errors = np.random.binomial(1, error_params['alpha_1'], size=YS.shape[0])
-    beta_0_errors = np.random.binomial(1, error_params['beta_0'], size=YS.shape[0])
-    beta_1_errors = np.random.binomial(1, error_params['beta_1'], size=YS.shape[0])
-
-    Y_0[(Y_0 == 0) & (alpha_0_errors == 1)] = 1
-    Y_0[(Y_0 == 1) & (beta_0_errors == 1)] = 0
-    Y_1[(Y_1 == 0) & (alpha_1_errors == 1)] = 1
-    Y_1[(Y_1 == 1) & (beta_1_errors == 1)] = 0
+    Y_0[alpha_0_errors == 1] = 1
+    Y_0[beta_0_errors == 1] = 0
+    Y_1[alpha_1_errors == 1] = 1
+    Y_1[beta_1_errors == 1] = 0
 
     Y[D==0] = Y_0[D==0]
     Y[D==1] = Y_1[D==1]

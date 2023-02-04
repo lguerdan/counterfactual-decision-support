@@ -106,7 +106,7 @@ def learn_weights(weight_dataset, config):
     })
         
     pi = MLP(n_feats=weight_dataset.X_train.shape[1])
-    losses = train(pi, train_loader, loss_config=loss_config, n_epochs=config.n_epochs, lr=config.lr, milestone=config.milestone, gamma=config.gamma, desc='Propensity model')
+    losses = train(pi, train_loader, loss_config=loss_config, n_epochs=15, lr=config.lr, milestone=config.milestone, gamma=config.gamma, desc='Propensity model')
     print('Weight losses: ', losses)
     return pi
 
