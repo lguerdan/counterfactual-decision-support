@@ -30,11 +30,11 @@ class MLP(nn.Module):
 
             # JOBS model
             self.layers = nn.Sequential(
-                nn.Linear(n_feats, 40),
+                nn.Linear(n_feats, 30),
                 nn.ReLU(),
-                nn.Linear(40, 30),
+                nn.Linear(30, 20),
                 nn.ReLU(),
-                nn.Linear(30, 10),
+                nn.Linear(20, 10),
                 nn.ReLU(),
                 nn.Linear(10, 1),
                 nn.Sigmoid()
