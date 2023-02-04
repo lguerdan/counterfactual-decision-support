@@ -67,7 +67,4 @@ def generate_ohie_data(OHIE_PATH, error_params, train_ratio=.7, shuffle=True):
     Y_train_s = Y_train[(Y_train['D'] == 0).to_numpy() | 
         ((Y_train['D'] == 1).to_numpy() & (X_train['above_federal_pov'] == 0).to_numpy())]  
 
-    X_train_s = (X_train_s - X_train_s.mean(axis=0))/X_train_s.std(axis=0)
-    X_test = (X_test - X_train_s.mean(axis=0))/X_train_s.std(axis=0)
-
     return X_train_s, X_test, Y_train_s, Y_test
