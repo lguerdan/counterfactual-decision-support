@@ -152,7 +152,7 @@ def generate_syn_data(env, error_params, NS, train_ratio=.7, shuffle=True):
     }
 
     X, Y = pd.DataFrame(x), pd.DataFrame(dataset_y)
-    X = ((X - X.mean()) / math.sqrt(X.var()))
+#     X = ((X - X.mean()) / math.sqrt(X.var()))
    
     if shuffle: 
         suffle_ix = permutation(X.index)
