@@ -83,7 +83,7 @@ def ccpe_multiestimate(dataset, do,  true_params, config):
     E_YS = YS[(E==1) & (D==do)].mean()
     E_Y = Y[(E==1) & (D==do)].mean()
 
-    if config.identification_pair == 'weak_seperability' or 'identification_pair' not in config:
+    if 'identification_pair' not in config or config.identification_pair == 'weak_seperability':
         
         ci = py_hat.min()
         ci_s = 0

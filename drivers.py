@@ -60,7 +60,8 @@ def run_benchmark_risk_minimization_exp(config, baselines, param_configs, exp_na
         
         for benchmark in config.benchmarks:
             config.benchmark = benchmark
-
+            config.identification_pair = config['identification_pair']
+            
             for run_num in range(config.n_runs):
             
                 print('===============================================================================================================')

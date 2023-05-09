@@ -11,7 +11,7 @@
     },
 
     "log_dir": "results",
-
+    "identification_pair": "weak_seperability",
     "sample_sizes": [500, 1000, 2000, 3000, 4000, 5000],
     "learn_weights": false,
     "learn_parameters": false,

@@ -11,8 +11,8 @@
     },
 
     "log_dir": "results",
-    "identification_pair": "weak_seperability",
-    "sample_sizes": [500, 1000, 2000, 3000, 4000, 5000],
+
+    "sample_sizes": [5000, 10000, 20000, 30000, 40000, 50000, 60000],
     "learn_weights": false,
     "learn_parameters": false,
     "n_epochs": 10,
@@ -55,59 +55,10 @@
     }],
     "baselines": [
         {
-            "model": "OBS",
-            "target": "Y",
-            "conditional": false,
-            "sl": false,
-            "reweight": false
-        },
-        {
-            "model": "OBS Oracle",
-            "target": "YS",
-            "conditional": false,
-            "sl": false,
-            "reweight": false
-        },
-        {
-            "model": "COM",
-            "target": "Y",
-            "conditional": true,
-            "sl": false,
-            "reweight": false
-        },
-        {
             "model": "COM-SL",
             "target": "Y",
             "conditional": true,
             "sl": true,
-            "reweight": false
-        },
-        {
-            "model": "RW",
-            "target": "Y",
-            "conditional": true,
-            "sl": false,
-            "reweight": true
-        },
-        {
-            "model": "RW-SL",
-            "target": "Y",
-            "conditional": true,
-            "sl": true,
-            "reweight": true
-        },
-        {
-            "model": "Proxy Oracle",
-            "target": "Y",
-            "conditional": true,
-            "sl": false,
-            "reweight": false
-        },
-        {
-            "model": "Target Oracle",
-            "target": "YS",
-            "conditional": true,
-            "sl": false,
             "reweight": false
         }
     ]
